@@ -2,9 +2,9 @@
 
 # tasgy
 
-GitHub Issues をバックエンドにした、スマホ向けタスク管理Webアプリ。
+GitHub Issues をバックエンドにしたタスク管理 Web アプリです。
 
-Issue の一覧をカンバン風タブで分類し、優先度変更・メモ追記・タスク作成をすばやく行える。
+課題一覧、ボード、ガントチャートを切り替えながら、GitHub Issue の確認、ラベル更新、コメント追加、完了処理、新規作成を一つの画面で扱えます。
 
 ## スクリーンショット
 
@@ -27,14 +27,12 @@ Issue の一覧をカンバン風タブで分類し、優先度変更・メモ�
 
 ## 機能
 
-- **タブ切り替え** — 優先度ラベル（緊急 / 今週 / 次週以降 / 確認待ち）で分類
-- **カテゴリフィルター / ソート** — カテゴリ絞り込み、期限順・作成日順で並べ替え
-- **タスク詳細** — カードをタップで展開、Issue 本文とコメントを表示
-- **メモ追記** — 展開内からコメントをすぐ追加
-- **優先度変更** — ボタンで優先度ラベルを付け替え
-- **タスク完了** — ワンタップで Issue を Close
-- **新規タスク作成** — タイトル・詳細・優先度・カテゴリ・期限を指定して作成
-- **期限アラート** — 3日以内 ⚠️ / 超過 🔥 を自動表示
+- 課題一覧: 検索、フィルター、ソート、詳細パネル表示
+- ボード: ステータス別または優先度別の列表示とドラッグ移動
+- ガントチャート: 作成日から期限日までの期間を可視化
+- 詳細パネル: Markdown 本文、コメント、状態変更、優先度変更、完了処理
+- 新規作成: 件名、詳細、状態、優先度、カテゴリ、期限を指定して Issue を作成
+- 期限表示: 3日以内は `⚠️`、超過は `🔥` で強調
 
 ## 技術スタック
 
@@ -45,55 +43,42 @@ Issue の一覧をカンバン風タブで分類し、優先度変更・メモ�
 
 ## ラベル設定
 
-tasgy は GitHub Issues のラベルでタスクを分類します。以下のラベルをリポジトリに作成してください。
+tasgy は GitHub Labels の `description` に含まれる分類文字列で表示グループを判定します。
 
-### 優先度ラベル（必須）
+- `priority` を含むラベル: 優先度
+- `status` を含むラベル: ステータス
+- `category` を含むラベル: カテゴリ
 
-アプリのタブに対応します。ラベル名は絵文字を含めて正確に一致させる必要があります。
+E2E と動作確認で使っている代表例:
 
-| ラベル名 | 色 | 用途 |
-|----------|------|------|
-| `🔴 緊急` | `#d73a4a` | 今日〜3日以内に対応必須 |
-| `🟡 今週` | `#fbca04` | 今週中に着手すべき |
-| `🔵 次週以降` | `#0075ca` | 追跡が必要だが緊急でない |
-| `👀 確認待ち` | `#f9d0c4` | 相手のアクション待ち |
+| 種別 | ラベル名 | 色 | description |
+|------|----------|----|-------------|
+| priority | `🔴 緊急` | `d73a4a` | `priority` |
+| priority | `🟡 今週` | `fbca04` | `priority` |
+| priority | `🔵 次週以降` | `0075ca` | `priority` |
+| priority | `👀 確認待ち` | `f9d0c4` | `priority` |
+| status | `未対応` | `9ca3af` | `status` |
+| status | `処理中` | `6366f1` | `status` |
+| status | `処理済み` | `22c55e` | `status` |
+| category | `🏢 経理総務` | `0e8a16` | `category` |
+| category | `👥 採用労務` | `d876e3` | `category` |
+| category | `🔒 情シス` | `006b75` | `category` |
 
-> 優先度ラベルなしの Issue は「🟡 今週」タブに表示されます。
-
-### ステータスラベル（任意）
-
-| ラベル名 | 色 | 用途 |
-|----------|------|------|
-| `⏸️ 保留` | `#e4e669` | 一時停止中 |
-
-### カテゴリラベル（任意・カスタマイズ可）
-
-カテゴリラベルを作成すると、フィルター機能でタスクを絞り込めます。業務や用途に合わせて自由に設定してください。
-
-カスタマイズする場合は `src/utils/labels.js` の `CATEGORY_LABELS` を編集します：
-
-```js
-export const CATEGORY_LABELS = [
-  { name: '📧 メール', color: '#0e8a16' },
-  { name: '📝 ドキュメント', color: '#d876e3' },
-  { name: '💻 開発', color: '#006b75' },
-  // 自由に追加・変更可能
-]
-```
-
-### ラベル一括作成スクリプト
-
-GitHub CLI でまとめて作成できます：
+GitHub CLI でまとめて作る例:
 
 ```bash
 REPO="<your-username>/<your-repo>"
 
-# 優先度ラベル
-gh label create "🔴 緊急" --color "d73a4a" --description "今日〜3日以内に対応必須" --repo $REPO
-gh label create "🟡 今週" --color "fbca04" --description "今週中に着手すべき" --repo $REPO
-gh label create "🔵 次週以降" --color "0075ca" --description "追跡が必要だが緊急でない" --repo $REPO
-gh label create "👀 確認待ち" --color "f9d0c4" --description "相手のアクション待ち" --repo $REPO
-gh label create "⏸️ 保留" --color "e4e669" --description "一時停止中" --repo $REPO
+gh label create "🔴 緊急" --color "d73a4a" --description "priority" --repo "$REPO"
+gh label create "🟡 今週" --color "fbca04" --description "priority" --repo "$REPO"
+gh label create "🔵 次週以降" --color "0075ca" --description "priority" --repo "$REPO"
+gh label create "👀 確認待ち" --color "f9d0c4" --description "priority" --repo "$REPO"
+gh label create "未対応" --color "9ca3af" --description "status" --repo "$REPO"
+gh label create "処理中" --color "6366f1" --description "status" --repo "$REPO"
+gh label create "処理済み" --color "22c55e" --description "status" --repo "$REPO"
+gh label create "🏢 経理総務" --color "0e8a16" --description "category" --repo "$REPO"
+gh label create "👥 採用労務" --color "d876e3" --description "category" --repo "$REPO"
+gh label create "🔒 情シス" --color "006b75" --description "category" --repo "$REPO"
 ```
 
 ## セットアップ
@@ -127,6 +112,41 @@ VITE_REPO_NAME=<Issueを管理するリポジトリ名>
 npm run dev
 ```
 
+## テスト
+
+### 単体・コンポーネントテスト
+
+```bash
+npm test
+```
+
+Vitest と Testing Library で、ユーティリティ、API ラッパー、主要コンポーネント、`App` の基本導線を確認します。
+
+### E2E テスト
+
+```bash
+E2E_GITHUB_TOKEN=<github-token> npm run test:e2e
+```
+
+前提:
+
+- `.env` に `VITE_REPO_OWNER` と `VITE_REPO_NAME` が設定されている
+- 対象リポジトリにラベルと seed Issue が存在する
+- `E2E_GITHUB_TOKEN` は対象リポジトリの Issue を更新できる
+
+現在の E2E カバー:
+
+- 一覧から詳細パネルを開く
+- ボード/ガント表示
+- 新規 Issue 作成
+- コメント追加
+- ステータス変更
+- 優先度変更
+- ボードのドラッグ移動
+- 完了処理
+
+seed データの想定は [`docs/TEST_CASES.md`](/Users/haruki_kubo/work/cra/tasgy-app/docs/TEST_CASES.md) にまとめています。
+
 ## デプロイ（GitHub Pages）
 
 1. リポジトリの Settings > Pages で **Source: GitHub Actions** を選択
@@ -134,6 +154,13 @@ npm run dev
    - `VITE_REPO_OWNER`
    - `VITE_REPO_NAME`
 3. `main` ブランチにプッシュすると自動デプロイ
+
+## CI
+
+GitHub Actions 用のワークフローを追加済みです。
+
+- `ci.yml`: `lint`、`build`、`test`
+- E2E は GitHub 書き込み権限が必要なため、ローカル実行を基本にしています
 
 ## ライセンス
 

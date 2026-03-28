@@ -36,6 +36,7 @@ function TokenInput({ onTokenSet }) {
         </p>
         <form onSubmit={handleSubmit}>
           <input
+            aria-label="GitHub Personal Access Token"
             type="password"
             value={inputToken}
             onChange={(e) => setInputToken(e.target.value)}

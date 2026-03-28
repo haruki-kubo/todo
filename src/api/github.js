@@ -45,6 +45,21 @@ export async function fetchIssues() {
   return issues.filter((i) => !i.pull_request)
 }
 
+// 全 Issue（Open + Closed）を取得（親子関係構築用）
+export async function fetchAllIssues() {
+  const issues = []
+  let page = 1
+  while (true) {
+    const batch = await request(
+      `/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=all&per_page=100&page=${page}`
+    )
+    issues.push(...batch)
+    if (batch.length < 100) break
+    page++
+  }
+  return issues.filter((i) => !i.pull_request)
+}
+
 // Issue のコメントを取得
 export async function fetchComments(issueNumber) {
   return request(
@@ -82,6 +97,59 @@ export async function createIssue(title, body, labels) {
     method: 'POST',
     body: JSON.stringify({ title, body, labels }),
   })
+}
+
+// Issue の本文を更新
+export async function updateIssueBody(issueNumber, body) {
+  return request(`/repos/${REPO_OWNER}/${REPO_NAME}/issues/${issueNumber}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ body }),
+  })
+}
+
+// リポジトリのラベル一覧を取得（ページネーション対応）
+export async function fetchLabels() {
+  const labels = []
+  let page = 1
+  while (true) {
+    const batch = await request(
+      `/repos/${REPO_OWNER}/${REPO_NAME}/labels?per_page=100&page=${page}`
+    )
+    labels.push(...batch)
+    if (batch.length < 100) break
+    page++
+  }
+  return labels
+}
+
+// マイルストーン一覧を取得
+export async function fetchMilestones() {
+  const milestones = []
+  let page = 1
+  while (true) {
+    const batch = await request(
+      `/repos/${REPO_OWNER}/${REPO_NAME}/milestones?state=all&per_page=100&page=${page}`
+    )
+    milestones.push(...batch)
+    if (batch.length < 100) break
+    page++
+  }
+  return milestones
+}
+
+// マイルストーンに属する Issue（Open + Closed）を取得
+export async function fetchMilestoneIssues(milestoneNumber) {
+  const issues = []
+  let page = 1
+  while (true) {
+    const batch = await request(
+      `/repos/${REPO_OWNER}/${REPO_NAME}/issues?milestone=${milestoneNumber}&state=all&per_page=100&page=${page}`
+    )
+    issues.push(...batch)
+    if (batch.length < 100) break
+    page++
+  }
+  return issues.filter((i) => !i.pull_request)
 }
 
 // トークンの有効性を確認

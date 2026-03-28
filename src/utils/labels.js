@@ -1,68 +1,101 @@
-// 優先度ラベル定義
-export const PRIORITY_LABELS = [
-  { name: '🔴 緊急', key: 'urgent', color: '#d73a4a' },
-  { name: '🟡 今週', key: 'this-week', color: '#fbca04' },
-  { name: '🔵 次週以降', key: 'next-week', color: '#0075ca' },
-  { name: '👀 確認待ち', key: 'waiting', color: '#f9d0c4' },
-]
+// GitHub から取得したラベルを description で分類する
+// description に "priority" を含む → 優先度ラベル（"priority:N" で順序指定可）
+// description に "category" を含む → カテゴリラベル
+// description に "status" を含む → ステータスラベル（"status:N" で順序指定可）
 
-// カテゴリラベル定義
-export const CATEGORY_LABELS = [
-  { name: '🏢 経理総務', color: '#0e8a16' },
-  { name: '👥 採用労務', color: '#d876e3' },
-  { name: '🔒 情シス', color: '#006b75' },
-  { name: '💼 人事制度', color: '#5319e7' },
-  { name: '🌐 コーポレート', color: '#c5def5' },
-]
+// description から "keyword:N" の N を抽出（なければ Infinity）
+function parseOrder(desc, keyword) {
+  const match = desc.match(new RegExp(`${keyword}\\s*[:：]\\s*(\\d+)`, 'i'))
+  return match ? parseInt(match[1], 10) : Infinity
+}
 
-// ステータスラベル
-export const STATUS_LABELS = [
-  { name: '👀 確認待ち', color: '#f9d0c4' },
-  { name: '⏸️ 保留', color: '#e4e669' },
-]
+export function classifyLabels(githubLabels) {
+  const priorityLabels = []
+  const categoryLabels = []
+  const statusLabels = []
 
-// タブ定義（優先度 + 確認待ち + ラベルなし）
-export const TABS = [
-  { name: '🔴 緊急', key: 'urgent', labelName: '🔴 緊急' },
-  { name: '🟡 今週', key: 'this-week', labelName: '🟡 今週' },
-  { name: '🔵 次週', key: 'next-week', labelName: '🔵 次週以降' },
-  { name: '👀 待ち', key: 'waiting', labelName: '👀 確認待ち' },
-]
+  for (const label of githubLabels) {
+    const desc = (label.description || '').toLowerCase()
+    const color = '#' + label.color
 
-// Issue のラベルから優先度キーを返す
-export function getPriorityKey(issue) {
+    if (desc.includes('priority')) {
+      priorityLabels.push({
+        name: label.name,
+        color,
+        key: label.name,
+        order: parseOrder(desc, 'priority'),
+        _idx: priorityLabels.length,
+      })
+    } else if (desc.includes('category')) {
+      categoryLabels.push({
+        name: label.name,
+        color,
+      })
+    } else if (desc.includes('status')) {
+      statusLabels.push({
+        name: label.name,
+        color,
+        key: label.name,
+        order: parseOrder(desc, 'status'),
+        _idx: statusLabels.length,
+      })
+    }
+  }
+
+  // order 昇順でソート。同じ order の場合は元の配列順を維持
+  const stableSort = (arr) => arr.sort((a, b) => a.order - b.order || a._idx - b._idx)
+  stableSort(priorityLabels)
+  stableSort(statusLabels)
+
+  return { priorityLabels, categoryLabels, statusLabels }
+}
+
+// Issue のラベルから優先度キーを返す（未設定は null）
+export function getPriorityKey(issue, priorityLabels) {
   const labelNames = issue.labels.map((l) => l.name)
-  for (const p of PRIORITY_LABELS) {
+  for (const p of priorityLabels) {
     if (labelNames.includes(p.name)) return p.key
   }
-  // 確認待ちチェック
-  if (labelNames.includes('👀 確認待ち')) return 'waiting'
-  // ラベルなし → 今週扱い
-  return 'this-week'
+  return null
 }
 
 // Issue のラベルからカテゴリラベルを返す
-export function getCategoryLabel(issue) {
+export function getCategoryLabel(issue, categoryLabels) {
   const labelNames = issue.labels.map((l) => l.name)
-  return CATEGORY_LABELS.find((c) => labelNames.includes(c.name)) || null
+  return categoryLabels.find((c) => labelNames.includes(c.name)) || null
 }
 
-// Issue のラベルから優先度ラベル名を返す
-export function getPriorityLabel(issue) {
+// Issue のラベルから優先度ラベルを返す
+export function getPriorityLabel(issue, priorityLabels) {
   const labelNames = issue.labels.map((l) => l.name)
-  return PRIORITY_LABELS.find((p) => labelNames.includes(p.name)) || null
+  return priorityLabels.find((p) => labelNames.includes(p.name)) || null
 }
 
-// 優先度の順序（ソート用）
-const PRIORITY_ORDER = { urgent: 0, 'this-week': 1, 'next-week': 2, waiting: 3 }
+// Issue のラベルからステータスキーを返す（未設定は null）
+export function getStatusKey(issue, statusLabels) {
+  const labelNames = issue.labels.map((l) => l.name)
+  for (const s of statusLabels) {
+    if (labelNames.includes(s.name)) return s.key
+  }
+  return null
+}
 
-export function getPriorityOrder(issue) {
-  return PRIORITY_ORDER[getPriorityKey(issue)] ?? 1
+// Issue のラベルからステータスラベルを返す
+export function getStatusLabel(issue, statusLabels) {
+  const labelNames = issue.labels.map((l) => l.name)
+  return statusLabels.find((s) => labelNames.includes(s.name)) || null
+}
+
+// 優先度の順序（ソート用）— 配列のインデックス順
+export function getPriorityOrder(issue, priorityLabels) {
+  const key = getPriorityKey(issue, priorityLabels)
+  const idx = priorityLabels.findIndex((p) => p.key === key)
+  return idx >= 0 ? idx : 999
 }
 
 // カテゴリの順序（ソート用）
-export function getCategoryOrder(issue) {
-  const cat = getCategoryLabel(issue)
+export function getCategoryOrder(issue, categoryLabels) {
+  const cat = getCategoryLabel(issue, categoryLabels)
   if (!cat) return 999
-  return CATEGORY_LABELS.findIndex((c) => c.name === cat.name)
+  return categoryLabels.findIndex((c) => c.name === cat.name)
 }

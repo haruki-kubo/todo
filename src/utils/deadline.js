@@ -6,9 +6,26 @@ export function parseDeadline(body) {
   if (!body) return null
   const match = body.match(DEADLINE_REGEX)
   if (!match) return null
-  const dateStr = match[1].replace(/\//g, '-')
-  const date = new Date(dateStr + 'T00:00:00')
-  return isNaN(date.getTime()) ? null : date
+  const normalized = match[1].replace(/\//g, '-')
+  const [yearStr, monthStr, dayStr] = normalized.split('-')
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+  if (!year || !month || !day) return null
+
+  const date = new Date(year, month - 1, day)
+  date.setHours(0, 0, 0, 0)
+
+  // JS Date の自動補正を弾いて、実在する日付だけ受け付ける
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null
+  }
+
+  return date
 }
 
 // 期限の表示テキストとステータスを返す
