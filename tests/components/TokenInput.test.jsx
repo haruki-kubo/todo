@@ -39,7 +39,7 @@ describe('TokenInput', () => {
   test('calls onTokenSet when token is valid', async () => {
     const user = userEvent.setup()
     const onTokenSet = vi.fn()
-    githubApiMocks.verifyToken.mockResolvedValue(true)
+    githubApiMocks.verifyToken.mockResolvedValue({ valid: true, error: null })
 
     render(<TokenInput onTokenSet={onTokenSet} />)
 
@@ -54,7 +54,10 @@ describe('TokenInput', () => {
 
   test('shows an error when token is invalid', async () => {
     const user = userEvent.setup()
-    githubApiMocks.verifyToken.mockResolvedValue(false)
+    githubApiMocks.verifyToken.mockResolvedValue({
+      valid: false,
+      error: 'トークンが無効です。権限を確認してください。',
+    })
 
     render(<TokenInput onTokenSet={() => {}} />)
 

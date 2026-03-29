@@ -14,7 +14,7 @@ const seededIssues = {
 
 async function loginToApp(page) {
   await page.addInitScript((storedToken) => {
-    window.localStorage.setItem('github_token', storedToken)
+    window.sessionStorage.setItem('github_token', storedToken)
   }, token)
 
   await page.goto('/')

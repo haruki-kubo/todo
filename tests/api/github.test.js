@@ -47,7 +47,7 @@ function createErrorResponse(status, body) {
 }
 
 beforeEach(() => {
-  vi.stubGlobal('localStorage', createStorageMock({ github_token: 'test-token' }))
+  vi.stubGlobal('sessionStorage', createStorageMock({ github_token: 'test-token' }))
   vi.stubGlobal('fetch', vi.fn())
 })
 
@@ -186,7 +186,7 @@ describe('github api wrapper', () => {
   })
 
   test('throws before making a request when token is missing', async () => {
-    vi.stubGlobal('localStorage', createStorageMock())
+    vi.stubGlobal('sessionStorage', createStorageMock())
 
     await expect(fetchIssues()).rejects.toThrow('トークンが設定されていません')
     expect(fetch).not.toHaveBeenCalled()
@@ -198,13 +198,20 @@ describe('github api wrapper', () => {
     await expect(addComment(1, 'x')).rejects.toThrow('GitHub API エラー (403): forbidden')
   })
 
-  test('verifyToken calls /user and returns true/false from res.ok', async () => {
+  test('verifyToken validates both /user and target repository access', async () => {
     fetch
+      .mockResolvedValueOnce({ ok: true })
       .mockResolvedValueOnce({ ok: true })
       .mockResolvedValueOnce({ ok: false })
 
-    await expect(verifyToken('good-token')).resolves.toBe(true)
-    await expect(verifyToken('bad-token')).resolves.toBe(false)
+    await expect(verifyToken('good-token')).resolves.toEqual({
+      valid: true,
+      error: null,
+    })
+    await expect(verifyToken('bad-token')).resolves.toEqual({
+      valid: false,
+      error: 'トークンが無効です。',
+    })
 
     expect(fetch.mock.calls[0][0]).toBe('https://api.github.com/user')
     expect(fetch.mock.calls[0][1]).toEqual({
@@ -213,5 +220,6 @@ describe('github api wrapper', () => {
         Accept: 'application/vnd.github.v3+json',
       },
     })
+    expect(fetch.mock.calls[1][0]).toBe('https://api.github.com/repos/haruki-kubo/todo')
   })
 })

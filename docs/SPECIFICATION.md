@@ -26,6 +26,7 @@
 | 2026-03-29 | 3.1 | IssueDetailPanel: Closed Milestone が候補外の場合に補完表示するよう修正。BurndownChart: `totalDays === 0` のガード除去、`effectiveTotalDays = Math.max(totalDays, 1)` でゼロ除算を防止 |
 | 2026-03-29 | 3.2 | App.jsx: ダッシュボードビューに `detailPanel` を統合。課題クリックで右側に詳細パネル表示 |
 | 2026-03-29 | 3.3 | ドキュメント整備: サイドバーのナビゲーション一覧を 8 メニューに更新。`activeView` の型定義・デフォルト値を `'dashboard'` に修正。コンポーネントツリーに全 8 ビューを反映 |
+| 2026-03-29 | 3.4 | `verifyToken` を 2 段階検証（ユーザー認証 + リポジトリアクセス）に強化。`selectedIssue` の同期を `allIssues` からも探すよう修正。ActivityFeed に表示範囲の説明を追加 |
 
 ---
 

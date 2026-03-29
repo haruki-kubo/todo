@@ -143,8 +143,10 @@ const issues = [
 ]
 
 beforeEach(() => {
-  const storageMock = createStorageMock()
-  vi.stubGlobal('localStorage', storageMock)
+  const localStorageMock = createStorageMock()
+  const sessionStorageMock = createStorageMock()
+  vi.stubGlobal('localStorage', localStorageMock)
+  vi.stubGlobal('sessionStorage', sessionStorageMock)
   apiMocks.fetchIssues.mockResolvedValue(issues)
   apiMocks.fetchAllIssues.mockResolvedValue(issues)
   apiMocks.fetchLabels.mockResolvedValue([])
@@ -166,7 +168,7 @@ describe('App', () => {
   })
 
   test('loads data when a token exists and switches views', async () => {
-    localStorage.setItem('github_token', 'stored-token')
+    sessionStorage.setItem('github_token', 'stored-token')
 
     render(<App />)
 
@@ -185,7 +187,7 @@ describe('App', () => {
   })
 
   test('opens detail panel and modal through child callbacks', async () => {
-    localStorage.setItem('github_token', 'stored-token')
+    sessionStorage.setItem('github_token', 'stored-token')
     const user = userEvent.setup()
 
     render(<App />)
@@ -199,7 +201,7 @@ describe('App', () => {
   })
 
   test('logs out and returns to token input', async () => {
-    localStorage.setItem('github_token', 'stored-token')
+    sessionStorage.setItem('github_token', 'stored-token')
     const user = userEvent.setup()
 
     render(<App />)
@@ -210,7 +212,7 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Logout' }))
 
-    expect(localStorage.getItem('github_token')).toBeNull()
+    expect(sessionStorage.getItem('github_token')).toBeNull()
     expect(screen.getByRole('button', { name: 'Mock Token Input' })).toBeInTheDocument()
   })
 })

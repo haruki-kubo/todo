@@ -18,11 +18,11 @@ function TokenInput({ onTokenSet }) {
     setVerifying(true)
     setError(null)
     try {
-      const valid = await verifyToken(trimmed)
-      if (valid) {
+      const result = await verifyToken(trimmed)
+      if (result.valid) {
         onTokenSet(trimmed)
       } else {
-        setError('トークンが無効です。権限を確認してください。')
+        setError(result.error || 'トークンが無効です。権限を確認してください。')
       }
     } catch {
       setError('接続エラーが発生しました。')
@@ -62,7 +62,7 @@ function TokenInput({ onTokenSet }) {
           </form>
 
           <p className="text-xs text-gray-400 mt-3 text-center">
-            トークンはこの端末のブラウザにのみ保存されます。サーバーには送信されません。
+            トークンはブラウザのセッション内にのみ保存されます。タブを閉じると自動的に削除されます。
           </p>
         </div>
 

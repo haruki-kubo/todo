@@ -3,7 +3,7 @@ const REPO_NAME = import.meta.env.VITE_REPO_NAME || ''
 const API_BASE = 'https://api.github.com'
 
 function getToken() {
-  return localStorage.getItem('github_token')
+  return sessionStorage.getItem('github_token')
 }
 
 async function request(path, options = {}) {
@@ -253,13 +253,23 @@ export async function fetchMilestoneIssues(milestoneNumber) {
   return issues.filter((i) => !i.pull_request)
 }
 
-// トークンの有効性を確認
+// トークンの有効性を確認（ユーザー認証 + 対象リポジトリへのアクセス）
 export async function verifyToken(token) {
-  const res = await fetch(`${API_BASE}/user`, {
-    headers: {
-      Authorization: `token ${token}`,
-      Accept: 'application/vnd.github.v3+json',
-    },
-  })
-  return res.ok
+  const headers = {
+    Authorization: `token ${token}`,
+    Accept: 'application/vnd.github.v3+json',
+  }
+  // ユーザー認証
+  const userRes = await fetch(`${API_BASE}/user`, { headers })
+  if (!userRes.ok) return { valid: false, error: 'トークンが無効です。' }
+
+  // 対象リポジトリへのアクセス確認
+  if (REPO_OWNER && REPO_NAME) {
+    const repoRes = await fetch(`${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}`, { headers })
+    if (!repoRes.ok) {
+      return { valid: false, error: `リポジトリ ${REPO_OWNER}/${REPO_NAME} にアクセスできません。トークンの権限を確認してください。` }
+    }
+  }
+
+  return { valid: true, error: null }
 }

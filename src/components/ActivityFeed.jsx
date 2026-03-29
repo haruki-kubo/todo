@@ -101,6 +101,11 @@ function ActivityFeed({ onSelectIssue, allIssues }) {
             </div>
           ))
         )}
+        {grouped.size > 0 && (
+          <p className="text-xs text-gray-400 text-center mt-4 pb-4">
+            直近のイベントのみ表示しています（最大 300 件）
+          </p>
+        )}
       </div>
     </div>
   )

@@ -17,7 +17,7 @@ import SettingsView from './components/SettingsView'
 import NewTaskModal from './components/NewTaskModal'
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem('github_token'))
+  const [token, setToken] = useState(sessionStorage.getItem('github_token'))
   const [issues, setIssues] = useState([])
   const [allIssues, setAllIssues] = useState([])
   const [priorityLabels, setPriorityLabels] = useState([])
@@ -46,11 +46,10 @@ function App() {
       setAllIssues(allIssuesData)
       setMilestones(milestonesData)
       setCollaborators(collaboratorsData)
-      // selectedIssue を最新データに同期
+      // selectedIssue を最新データに同期（allIssues ベースで検索）
       setSelectedIssue((prev) => {
         if (!prev) return null
-        const updated = issuesData.find((i) => i.id === prev.id)
-        return updated || null
+        return allIssuesData.find((i) => i.id === prev.id) || null
       })
       const { priorityLabels: pl, categoryLabels: cl, statusLabels: sl } = classifyLabels(labelsData)
       setPriorityLabels(pl)
@@ -68,12 +67,12 @@ function App() {
   }, [token, loadData])
 
   const handleTokenSet = (newToken) => {
-    localStorage.setItem('github_token', newToken)
+    sessionStorage.setItem('github_token', newToken)
     setToken(newToken)
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('github_token')
+    sessionStorage.removeItem('github_token')
     setToken(null)
     setIssues([])
     setAllIssues([])
