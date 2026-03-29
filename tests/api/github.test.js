@@ -198,11 +198,19 @@ describe('github api wrapper', () => {
     await expect(addComment(1, 'x')).rejects.toThrow('GitHub API エラー (403): forbidden')
   })
 
-  test('verifyToken validates both /user and target repository access', async () => {
+  test('verifyToken validates token, repository access, and write permission', async () => {
     fetch
       .mockResolvedValueOnce({ ok: true })
-      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ permissions: { push: true, admin: false } }),
+      })
       .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ permissions: { push: false, admin: false } }),
+      })
 
     await expect(verifyToken('good-token')).resolves.toEqual({
       valid: true,
@@ -211,6 +219,10 @@ describe('github api wrapper', () => {
     await expect(verifyToken('bad-token')).resolves.toEqual({
       valid: false,
       error: 'トークンが無効です。',
+    })
+    await expect(verifyToken('readonly-token')).resolves.toEqual({
+      valid: false,
+      error: 'リポジトリ haruki-kubo/todo への書き込み権限がありません。Issues: Read and write 権限のトークンを使用してください。',
     })
 
     expect(fetch.mock.calls[0][0]).toBe('https://api.github.com/user')

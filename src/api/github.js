@@ -108,6 +108,7 @@ export async function setAssignees(issueNumber, assignees) {
 }
 
 // リポジトリのコラボレーター一覧を取得
+// 戻り値: { data: Collaborator[], error: string | null }
 export async function fetchCollaborators() {
   try {
     const collaborators = []
@@ -120,10 +121,15 @@ export async function fetchCollaborators() {
       if (batch.length < 100) break
       page++
     }
-    return collaborators
-  } catch {
-    // 権限がない場合は空配列を返す
-    return []
+    return { data: collaborators, error: null }
+  } catch (e) {
+    const is403 = e.message?.includes('403')
+    return {
+      data: [],
+      error: is403
+        ? 'コラボレーター一覧の取得権限がありません'
+        : 'コラボレーター一覧の取得に失敗しました',
+    }
   }
 }
 
@@ -268,6 +274,13 @@ export async function verifyToken(token) {
     const repoRes = await fetch(`${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}`, { headers })
     if (!repoRes.ok) {
       return { valid: false, error: `リポジトリ ${REPO_OWNER}/${REPO_NAME} にアクセスできません。トークンの権限を確認してください。` }
+    }
+
+    // Issue の書き込み権限を確認（ダミー Issue 作成ではなく permissions で判定）
+    const repoData = await repoRes.json()
+    const permissions = repoData.permissions
+    if (permissions && !permissions.push && !permissions.admin) {
+      return { valid: false, error: `リポジトリ ${REPO_OWNER}/${REPO_NAME} への書き込み権限がありません。Issues: Read and write 権限のトークンを使用してください。` }
     }
   }
 

@@ -27,6 +27,7 @@
 | 2026-03-29 | 3.2 | App.jsx: ダッシュボードビューに `detailPanel` を統合。課題クリックで右側に詳細パネル表示 |
 | 2026-03-29 | 3.3 | ドキュメント整備: サイドバーのナビゲーション一覧を 8 メニューに更新。`activeView` の型定義・デフォルト値を `'dashboard'` に修正。コンポーネントツリーに全 8 ビューを反映 |
 | 2026-03-29 | 3.4 | `verifyToken` を 2 段階検証（ユーザー認証 + リポジトリアクセス）に強化。`selectedIssue` の同期を `allIssues` からも探すよう修正。ActivityFeed に表示範囲の説明を追加 |
+| 2026-03-29 | 3.5 | `verifyToken` を 3 段階検証に強化（書き込み権限チェック追加）。`fetchCollaborators` の戻り値を `{ data, error }` に変更し、UI にエラー表示を追加。仕様書の `verifyToken` シグネチャを更新 |
 
 ---
 
@@ -428,15 +429,18 @@ GET /repos/{owner}/{repo}/issues?milestone={number}&state=all&per_page=100&page=
 - 指定 Milestone に属する全 Issue（Open + Closed）を取得
 - PR 除外
 
-#### `verifyToken(token): Promise<boolean>`
+#### `verifyToken(token): Promise<{ valid: boolean, error: string | null }>`
+
+3 段階でトークンを検証する。`request()` ラッパーを使わず直接 `fetch` する。
 
 ```
-GET /user
-Authorization: token {token}
+1. GET /user                              → トークン自体の有効性
+2. GET /repos/{owner}/{repo}              → 対象リポジトリへのアクセス権
+3. レスポンスの permissions.push / admin   → 書き込み権限
 ```
 
-- `res.ok` を返す（true/false）
-- 他の API 関数と異なり、`request()` ラッパーを使わない
+- 各ステップで失敗した場合、`{ valid: false, error: '具体的なエラーメッセージ' }` を返す
+- 全ステップ通過で `{ valid: true, error: null }` を返す
 
 ---
 

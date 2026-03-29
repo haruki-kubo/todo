@@ -25,6 +25,7 @@ function App() {
   const [statusLabels, setStatusLabels] = useState([])
   const [milestones, setMilestones] = useState([])
   const [collaborators, setCollaborators] = useState([])
+  const [collaboratorsError, setCollaboratorsError] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [activeView, setActiveView] = useState('dashboard')
@@ -45,7 +46,8 @@ function App() {
       setIssues(issuesData)
       setAllIssues(allIssuesData)
       setMilestones(milestonesData)
-      setCollaborators(collaboratorsData)
+      setCollaborators(collaboratorsData.data)
+      setCollaboratorsError(collaboratorsData.error)
       // selectedIssue を最新データに同期（allIssues ベースで検索）
       setSelectedIssue((prev) => {
         if (!prev) return null
@@ -113,6 +115,7 @@ function App() {
         hierarchy={hierarchy}
         milestones={milestones}
         collaborators={collaborators}
+        collaboratorsError={collaboratorsError}
         priorityLabels={priorityLabels}
         categoryLabels={categoryLabels}
         statusLabels={statusLabels}

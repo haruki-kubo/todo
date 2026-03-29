@@ -10,7 +10,7 @@ import CommentForm from './CommentForm'
 const REPO_OWNER = import.meta.env.VITE_REPO_OWNER || ''
 const REPO_NAME = import.meta.env.VITE_REPO_NAME || ''
 
-function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborators, priorityLabels, categoryLabels, statusLabels, onClose, onUpdate, onSelectIssue }) {
+function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborators, collaboratorsError, priorityLabels, categoryLabels, statusLabels, onClose, onUpdate, onSelectIssue }) {
   const [comments, setComments] = useState(null)
   const [operating, setOperating] = useState(false)
   const fetchedRef = useRef(null)
@@ -114,6 +114,9 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
                 <option value={issue.assignee.login}>{issue.assignee.login}</option>
               )}
             </select>
+            {collaboratorsError && (
+              <span className="text-[10px] text-orange-500" title={collaboratorsError}>!</span>
+            )}
           </div>
           {statusLabels.length > 0 && (
             <div className="flex items-center gap-3">
