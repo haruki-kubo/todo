@@ -276,12 +276,22 @@ export async function verifyToken(token) {
       return { valid: false, error: `リポジトリ ${REPO_OWNER}/${REPO_NAME} にアクセスできません。トークンの権限を確認してください。` }
     }
 
-    // Issue の書き込み権限を確認（ダミー Issue 作成ではなく permissions で判定）
-    const repoData = await repoRes.json()
-    const permissions = repoData.permissions
-    if (permissions && !permissions.push && !permissions.admin) {
+    // Issue の書き込み権限を確認（ラベル作成を試みて 403 / 404 なら read-only と判定）
+    const writeCheckRes = await fetch(
+      `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/labels`,
+      { method: 'POST', headers, body: JSON.stringify({ name: '__write_check__' }) }
+    )
+    if (writeCheckRes.status === 403 || writeCheckRes.status === 404) {
       return { valid: false, error: `リポジトリ ${REPO_OWNER}/${REPO_NAME} への書き込み権限がありません。Issues: Read and write 権限のトークンを使用してください。` }
     }
+    // 作成成功してしまった場合は即削除
+    if (writeCheckRes.status === 201) {
+      await fetch(
+        `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/labels/${encodeURIComponent('__write_check__')}`,
+        { method: 'DELETE', headers }
+      )
+    }
+    // 422 (既に存在) は書き込み権限ありと判定
   }
 
   return { valid: true, error: null }
