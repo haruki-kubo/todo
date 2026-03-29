@@ -94,3 +94,24 @@ export function appendChildToBody(body, childNumber) {
   // なければ末尾にセクションを追加
   return `${body}\n\n### サブタスク\n${taskLine}`
 }
+
+// Issue 本文から関連課題（#N 参照、タスクリスト以外）を抽出
+export function parseRelatedNumbers(body) {
+  if (!body) return []
+  // 全ての #N を抽出
+  const allRefs = []
+  const refRegex = /#(\d+)/g
+  let match
+  while ((match = refRegex.exec(body)) !== null) {
+    allRefs.push(parseInt(match[1], 10))
+  }
+  // タスクリスト行の #N を除外
+  const childNumbers = new Set(parseChildNumbers(body))
+  // 重複除去し、親子関係以外を返す
+  const seen = new Set()
+  return allRefs.filter((num) => {
+    if (seen.has(num) || childNumbers.has(num)) return false
+    seen.add(num)
+    return true
+  })
+}

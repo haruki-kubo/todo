@@ -18,8 +18,13 @@ async function loginToApp(page) {
   }, token)
 
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: '課題' })).toBeVisible()
   await expect(page.getByText(`${repoOwner}/${repoName}`)).toBeVisible()
+  await expect(page.getByRole('button', { name: '📋 課題' })).toBeVisible()
+}
+
+async function openIssuesView(page) {
+  await page.getByRole('button', { name: '📋 課題' }).click()
+  await expect(page.getByTestId('issue-row-1')).toBeVisible()
 }
 
 async function githubRequest(path, options = {}) {
@@ -75,6 +80,8 @@ test.describe('Tasgy E2E', () => {
   })
 
   test('loads seeded issues and opens the detail panel', async ({ page }) => {
+    await openIssuesView(page)
+
     await expect(page.getByTestId('issue-row-1')).toContainText(seededIssues.overdue)
     await expect(page.getByTestId('issue-row-2')).toContainText(seededIssues.soon)
 
@@ -92,7 +99,7 @@ test.describe('Tasgy E2E', () => {
   })
 
   test('shows seeded issues in board and gantt views', async ({ page }) => {
-    await page.getByRole('button', { name: /ボード/ }).click()
+    await page.getByRole('button', { name: '📊 ボード' }).click()
     await expect(page.getByTestId('board-column-未対応')).toContainText(seededIssues.overdue)
     await expect(page.getByTestId('board-column-処理中')).toContainText(seededIssues.soon)
 
@@ -101,7 +108,7 @@ test.describe('Tasgy E2E', () => {
     await expect(page.getByTestId('board-column-🟡 今週')).toContainText(seededIssues.soon)
     await expect(page.getByTestId('board-column-__unset__')).toContainText(seededIssues.extraLabel)
 
-    await page.getByRole('button', { name: /ガントチャート/ }).click()
+    await page.getByRole('button', { name: '📅 ガントチャート' }).click()
     const gantt = page.getByTestId('gantt-chart')
     await expect(gantt).toBeVisible()
     await expect(gantt).toContainText(seededIssues.overdue)
@@ -132,6 +139,7 @@ test.describe('Tasgy E2E', () => {
         .not.toBeNull()
 
       createdIssueNumber = (await findIssueByTitle(title))?.number ?? null
+      await openIssuesView(page)
       await page.getByRole('button', { name: '↻ 更新' }).click()
 
       const searchInput = page.getByLabel('課題検索')
@@ -156,6 +164,7 @@ test.describe('Tasgy E2E', () => {
     let createdCommentId = null
 
     try {
+      await openIssuesView(page)
       await page.getByTestId(`issue-row-${issueNumber}`).click()
 
       const detail = page.getByTestId('issue-detail-panel')
@@ -202,6 +211,7 @@ test.describe('Tasgy E2E', () => {
     const originalLabels = originalIssue.labels.map((label) => label.name)
 
     try {
+      await openIssuesView(page)
       await page.getByTestId(`issue-row-${issueNumber}`).click()
 
       const detail = page.getByTestId('issue-detail-panel')
@@ -228,7 +238,7 @@ test.describe('Tasgy E2E', () => {
     const originalLabels = originalIssue.labels.map((label) => label.name)
 
     try {
-      await page.getByRole('button', { name: /ボード/ }).click()
+      await page.getByRole('button', { name: '📊 ボード' }).click()
 
       const card = page.getByTestId(`board-card-${issueNumber}`)
       const targetColumn = page.getByTestId('board-column-処理中')
@@ -253,6 +263,7 @@ test.describe('Tasgy E2E', () => {
     const title = seededIssues.noDeadline
 
     try {
+      await openIssuesView(page)
       const searchInput = page.getByLabel('課題検索')
       await searchInput.fill(title)
       await expect(page.getByTestId(`issue-row-${issueNumber}`)).toContainText(title)

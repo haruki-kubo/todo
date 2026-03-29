@@ -22,6 +22,10 @@
 | 2026-03-28 | 2.5 | `fetchMilestones`・`fetchMilestoneIssues` API を追加。`BurndownChart` コンポーネントを新規作成。Sidebar に `burndown` メニューを追加。App.jsx に `burndown` ビューを統合 |
 | 2026-03-28 | 2.6 | BurndownChart の開始日を Milestone description の `開始日: YYYY-MM-DD` / `YYYY/MM/DD` で上書き可能に変更。未指定時は最古の Issue 作成日にフォールバック |
 | 2026-03-29 | 2.7 | ラベル CRUD API（`createLabel` / `updateLabel` / `deleteLabel`）とマイルストーン CRUD API（`createMilestone` / `updateMilestone` / `deleteMilestone`）を追加。`SettingsView` コンポーネントを新規作成。Sidebar に `settings` メニューを追加 |
+| 2026-03-29 | 3.0 | `setMilestone` / `setAssignees` / `fetchCollaborators` / `fetchIssueEvents` API を追加。`Dashboard` / `CalendarView` / `ActivityFeed` コンポーネントを新規作成。IssueDetailPanel にマイルストーン設定・担当者変更・関連課題リンクを追加。NewTaskModal にマイルストーン選択を追加。`parseRelatedNumbers` ユーティリティを追加。デフォルトビューをダッシュボードに変更 |
+| 2026-03-29 | 3.1 | IssueDetailPanel: Closed Milestone が候補外の場合に補完表示するよう修正。BurndownChart: `totalDays === 0` のガード除去、`effectiveTotalDays = Math.max(totalDays, 1)` でゼロ除算を防止 |
+| 2026-03-29 | 3.2 | App.jsx: ダッシュボードビューに `detailPanel` を統合。課題クリックで右側に詳細パネル表示 |
+| 2026-03-29 | 3.3 | ドキュメント整備: サイドバーのナビゲーション一覧を 8 メニューに更新。`activeView` の型定義・デフォルト値を `'dashboard'` に修正。コンポーネントツリーに全 8 ビューを反映 |
 
 ---
 
@@ -93,6 +97,9 @@ src/
     ├── BoardView.jsx         # ボードビュー（カンバン + D&D）
     ├── GanttChart.jsx        # ガントチャートビュー
     ├── BurndownChart.jsx     # バーンダウンチャートビュー
+    ├── Dashboard.jsx         # ダッシュボード
+    ├── CalendarView.jsx      # カレンダービュー
+    ├── ActivityFeed.jsx      # 更新履歴フィード
     ├── SettingsView.jsx      # 設定画面（ラベル・マイルストーン管理）
     ├── TaskCard.jsx          # ボード用カード
     ├── NewTaskModal.jsx      # 新規課題作成モーダル
@@ -105,11 +112,15 @@ src/
 App
 ├── TokenInput                     # token === null の場合のみ表示
 │
-├── Sidebar                        # 常時表示
+├── Sidebar                        # 常時表示（8 メニュー）
 ├── ProjectHeader                  # 常時表示
 │
+├── [activeView === 'dashboard']   # デフォルトビュー
+│   ├── Dashboard
+│   └── IssueDetailPanel           # 課題クリック時
+│
 ├── [activeView === 'issues']
-│   ├── IssueTable                 # メイン領域
+│   ├── IssueTable                 # ツリー表示対応
 │   └── IssueDetailPanel           # selectedIssue !== null の場合
 │       ├── CommentForm
 │       └── (Markdown rendering)
@@ -119,7 +130,22 @@ App
 │       └── TaskCard × N           # draggable
 │
 ├── [activeView === 'gantt']
-│   └── GanttChart
+│   ├── GanttChart                 # ツリー表示・親サマリーバー対応
+│   └── IssueDetailPanel
+│
+├── [activeView === 'calendar']
+│   ├── CalendarView               # 月表示
+│   └── IssueDetailPanel
+│
+├── [activeView === 'burndown']
+│   └── BurndownChart              # Milestone ベース
+│
+├── [activeView === 'activity']
+│   ├── ActivityFeed               # イベントタイムライン
+│   └── IssueDetailPanel
+│
+├── [activeView === 'settings']
+│   └── SettingsView               # ラベル・マイルストーン CRUD
 │
 └── NewTaskModal                   # showNewTask === true の場合
 ```
@@ -170,7 +196,7 @@ App
 | `statusLabels` | `LabelDef[]` | `[]` | description に "status" を含むラベル |
 | `loading` | `boolean` | `false` | データ取得中フラグ |
 | `error` | `string \| null` | `null` | エラーメッセージ |
-| `activeView` | `'issues' \| 'board' \| 'gantt'` | `'issues'` | 現在のビュー |
+| `activeView` | `'dashboard' \| 'issues' \| 'board' \| 'gantt' \| 'calendar' \| 'burndown' \| 'activity' \| 'settings'` | `'dashboard'` | 現在のビュー |
 | `selectedIssue` | `Issue \| null` | `null` | 選択中の Issue |
 | `showNewTask` | `boolean` | `false` | モーダル表示フラグ |
 

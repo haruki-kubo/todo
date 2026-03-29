@@ -164,15 +164,15 @@ function BurndownChart() {
     if (!chartData || loadingIssues) return null
 
     const { totalIssues, days, totalDays } = chartData
-    if (totalDays === 0) return null
 
     const maxY = totalIssues
-    const xScale = (i) => CHART_PADDING.left + (i / totalDays) * innerWidth
+    const effectiveTotalDays = Math.max(totalDays, 1)
+    const xScale = (i) => CHART_PADDING.left + (i / effectiveTotalDays) * innerWidth
     const yScale = (v) => CHART_PADDING.top + ((maxY - v) / maxY) * innerHeight
 
     // 理想線
     const idealPoints = days.map((_, i) => {
-      const idealRemaining = totalIssues * (1 - i / totalDays)
+      const idealRemaining = totalIssues * (1 - i / effectiveTotalDays)
       return `${xScale(i)},${yScale(idealRemaining)}`
     }).join(' ')
 

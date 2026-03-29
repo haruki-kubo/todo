@@ -9,6 +9,8 @@ const githubApiMocks = vi.hoisted(() => ({
   addComment: vi.fn(),
   closeIssue: vi.fn(),
   setLabels: vi.fn(),
+  setMilestone: vi.fn(),
+  setAssignees: vi.fn(),
 }))
 
 vi.mock('../../src/api/github.js', () => ({
@@ -16,6 +18,8 @@ vi.mock('../../src/api/github.js', () => ({
   addComment: githubApiMocks.addComment,
   closeIssue: githubApiMocks.closeIssue,
   setLabels: githubApiMocks.setLabels,
+  setMilestone: githubApiMocks.setMilestone,
+  setAssignees: githubApiMocks.setAssignees,
 }))
 
 const priorityLabels = [
@@ -36,6 +40,12 @@ const emptyHierarchy = {
   parentMap: new Map(),
   childrenMap: new Map(),
 }
+
+const collaborators = [
+  { login: 'tester', avatar_url: 'https://example.com/avatar.png' },
+]
+
+const milestones = []
 
 function createIssue(overrides = {}) {
   return {
@@ -58,6 +68,25 @@ function createIssue(overrides = {}) {
   }
 }
 
+function renderPanel(props = {}) {
+  return render(
+    <IssueDetailPanel
+      issue={createIssue()}
+      allIssues={[createIssue()]}
+      hierarchy={emptyHierarchy}
+      milestones={milestones}
+      collaborators={collaborators}
+      priorityLabels={priorityLabels}
+      categoryLabels={categoryLabels}
+      statusLabels={statusLabels}
+      onClose={() => {}}
+      onUpdate={() => {}}
+      onSelectIssue={() => {}}
+      {...props}
+    />
+  )
+}
+
 beforeEach(() => {
   githubApiMocks.fetchComments.mockResolvedValue([])
   githubApiMocks.addComment.mockResolvedValue({
@@ -68,6 +97,8 @@ beforeEach(() => {
   })
   githubApiMocks.closeIssue.mockResolvedValue({})
   githubApiMocks.setLabels.mockResolvedValue([])
+  githubApiMocks.setMilestone.mockResolvedValue({})
+  githubApiMocks.setAssignees.mockResolvedValue({})
   vi.stubGlobal('alert', vi.fn())
   vi.stubGlobal('confirm', vi.fn(() => true))
 })
@@ -89,20 +120,7 @@ describe('IssueDetailPanel', () => {
       },
     ])
 
-    render(
-      <IssueDetailPanel
-        issue={createIssue()}
-        issues={[createIssue()]}
-        allIssues={[createIssue()]}
-        hierarchy={emptyHierarchy}
-        priorityLabels={priorityLabels}
-        categoryLabels={categoryLabels}
-        statusLabels={statusLabels}
-        onClose={() => {}}
-        onUpdate={() => {}}
-        onSelectIssue={() => {}}
-      />
-    )
+    renderPanel()
 
     await waitFor(() => {
       expect(githubApiMocks.fetchComments).toHaveBeenCalledWith(101)
@@ -113,20 +131,7 @@ describe('IssueDetailPanel', () => {
   test('submits a new comment and appends it to the list', async () => {
     const user = userEvent.setup()
 
-    render(
-      <IssueDetailPanel
-        issue={createIssue()}
-        issues={[createIssue()]}
-        allIssues={[createIssue()]}
-        hierarchy={emptyHierarchy}
-        priorityLabels={priorityLabels}
-        categoryLabels={categoryLabels}
-        statusLabels={statusLabels}
-        onClose={() => {}}
-        onUpdate={() => {}}
-        onSelectIssue={() => {}}
-      />
-    )
+    renderPanel()
 
     await user.type(screen.getByPlaceholderText('メモを追加...'), '追加コメント')
     await user.click(screen.getByRole('button', { name: '送信' }))
@@ -141,20 +146,7 @@ describe('IssueDetailPanel', () => {
     const user = userEvent.setup()
     const onUpdate = vi.fn()
 
-    render(
-      <IssueDetailPanel
-        issue={createIssue()}
-        issues={[createIssue()]}
-        allIssues={[createIssue()]}
-        hierarchy={emptyHierarchy}
-        priorityLabels={priorityLabels}
-        categoryLabels={categoryLabels}
-        statusLabels={statusLabels}
-        onClose={() => {}}
-        onUpdate={onUpdate}
-        onSelectIssue={() => {}}
-      />
-    )
+    renderPanel({ onUpdate })
 
     await user.click(screen.getByRole('button', { name: '処理中' }))
 
@@ -169,20 +161,7 @@ describe('IssueDetailPanel', () => {
     const onUpdate = vi.fn()
     const onClose = vi.fn()
 
-    render(
-      <IssueDetailPanel
-        issue={createIssue()}
-        issues={[createIssue()]}
-        allIssues={[createIssue()]}
-        hierarchy={emptyHierarchy}
-        priorityLabels={priorityLabels}
-        categoryLabels={categoryLabels}
-        statusLabels={statusLabels}
-        onClose={onClose}
-        onUpdate={onUpdate}
-        onSelectIssue={() => {}}
-      />
-    )
+    renderPanel({ onClose, onUpdate })
 
     await user.click(screen.getByRole('button', { name: '完了にする' }))
 

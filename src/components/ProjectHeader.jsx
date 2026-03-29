@@ -5,8 +5,11 @@ const VIEW_TITLES = {
   issues: '課題',
   board: 'ボード',
   gantt: 'ガントチャート',
+  calendar: 'カレンダー',
   burndown: 'バーンダウンチャート',
+  activity: '更新履歴',
   settings: '設定',
+  dashboard: 'ダッシュボード',
 }
 
 function ProjectHeader({ activeView, issueCount, onLogout, onRefresh, loading }) {

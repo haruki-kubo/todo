@@ -91,6 +91,57 @@ export async function setLabels(issueNumber, labelNames) {
   })
 }
 
+// Issue のマイルストーンを設定
+export async function setMilestone(issueNumber, milestoneNumber) {
+  return request(`/repos/${REPO_OWNER}/${REPO_NAME}/issues/${issueNumber}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ milestone: milestoneNumber }),
+  })
+}
+
+// Issue の担当者を設定
+export async function setAssignees(issueNumber, assignees) {
+  return request(`/repos/${REPO_OWNER}/${REPO_NAME}/issues/${issueNumber}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ assignees }),
+  })
+}
+
+// リポジトリのコラボレーター一覧を取得
+export async function fetchCollaborators() {
+  try {
+    const collaborators = []
+    let page = 1
+    while (true) {
+      const batch = await request(
+        `/repos/${REPO_OWNER}/${REPO_NAME}/collaborators?per_page=100&page=${page}`
+      )
+      collaborators.push(...batch)
+      if (batch.length < 100) break
+      page++
+    }
+    return collaborators
+  } catch {
+    // 権限がない場合は空配列を返す
+    return []
+  }
+}
+
+// Issue のイベント（タイムライン）を取得
+export async function fetchIssueEvents() {
+  const events = []
+  let page = 1
+  while (page <= 3) { // 最新3ページ分
+    const batch = await request(
+      `/repos/${REPO_OWNER}/${REPO_NAME}/issues/events?per_page=100&page=${page}`
+    )
+    events.push(...batch)
+    if (batch.length < 100) break
+    page++
+  }
+  return events
+}
+
 // 新規 Issue を作成
 export async function createIssue(title, body, labels) {
   return request(`/repos/${REPO_OWNER}/${REPO_NAME}/issues`, {

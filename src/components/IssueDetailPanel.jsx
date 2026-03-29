@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { fetchComments, closeIssue, setLabels } from '../api/github'
+import { fetchComments, closeIssue, setLabels, setMilestone, setAssignees } from '../api/github'
 import { getCategoryLabel, getPriorityLabel, getStatusLabel } from '../utils/labels'
 import { parseDeadline, getDeadlineInfo } from '../utils/deadline'
-import { parseChildNumbers, getSubtaskProgress } from '../utils/hierarchy'
+import { parseChildNumbers, getSubtaskProgress, parseRelatedNumbers } from '../utils/hierarchy'
 import CommentForm from './CommentForm'
 
 const REPO_OWNER = import.meta.env.VITE_REPO_OWNER || ''
 const REPO_NAME = import.meta.env.VITE_REPO_NAME || ''
 
-function IssueDetailPanel({ issue, allIssues, hierarchy, priorityLabels, categoryLabels, statusLabels, onClose, onUpdate, onSelectIssue }) {
+function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborators, priorityLabels, categoryLabels, statusLabels, onClose, onUpdate, onSelectIssue }) {
   const [comments, setComments] = useState(null)
   const [operating, setOperating] = useState(false)
   const fetchedRef = useRef(null)
@@ -90,18 +90,30 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, priorityLabels, categor
         <div className="px-5 py-4 border-b border-gray-100 space-y-3">
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 w-16 shrink-0">担当者</span>
-            {issue.assignee ? (
-              <div className="flex items-center gap-1.5">
-                <img
-                  src={issue.assignee.avatar_url}
-                  alt=""
-                  className="w-5 h-5 rounded-full"
-                />
-                <span className="text-xs text-gray-700">{issue.assignee.login}</span>
-              </div>
-            ) : (
-              <span className="text-xs text-gray-400">未設定</span>
-            )}
+            <select
+              value={issue.assignee?.login || ''}
+              onChange={async (e) => {
+                setOperating(true)
+                try {
+                  await setAssignees(issue.number, e.target.value ? [e.target.value] : [])
+                  onUpdate()
+                } catch (err) {
+                  alert('担当者変更に失敗しました: ' + err.message)
+                } finally {
+                  setOperating(false)
+                }
+              }}
+              disabled={operating}
+              className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
+            >
+              <option value="">未設定</option>
+              {collaborators.map((c) => (
+                <option key={c.login} value={c.login}>{c.login}</option>
+              ))}
+              {issue.assignee && !collaborators.find((c) => c.login === issue.assignee.login) && (
+                <option value={issue.assignee.login}>{issue.assignee.login}</option>
+              )}
+            </select>
           </div>
           {statusLabels.length > 0 && (
             <div className="flex items-center gap-3">
@@ -161,12 +173,70 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, priorityLabels, categor
             )}
           </div>
           <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400 w-16 shrink-0">MS</span>
+            <select
+              value={issue.milestone?.number || ''}
+              onChange={async (e) => {
+                setOperating(true)
+                try {
+                  await setMilestone(issue.number, e.target.value ? parseInt(e.target.value, 10) : null)
+                  onUpdate()
+                } catch (err) {
+                  alert('マイルストーン変更に失敗しました: ' + err.message)
+                } finally {
+                  setOperating(false)
+                }
+              }}
+              disabled={operating}
+              className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
+            >
+              <option value="">未設定</option>
+              {milestones.filter((m) => m.state === 'open').map((m) => (
+                <option key={m.number} value={m.number}>{m.title}</option>
+              ))}
+              {issue.milestone && !milestones.find((m) => m.state === 'open' && m.number === issue.milestone.number) && (
+                <option value={issue.milestone.number}>{issue.milestone.title} (Closed)</option>
+              )}
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 w-16 shrink-0">作成日</span>
             <span className="text-xs text-gray-600">
               {new Date(issue.created_at).toLocaleDateString('ja-JP')}
             </span>
           </div>
         </div>
+
+        {/* 関連課題 */}
+        {(() => {
+          const relatedNums = parseRelatedNumbers(issue.body)
+          if (relatedNums.length === 0) return null
+          return (
+            <div className="px-5 py-3 border-b border-gray-100">
+              <h4 className="text-xs font-medium text-gray-500 mb-1.5">関連課題</h4>
+              <div className="space-y-1">
+                {relatedNums.map((num) => {
+                  const related = allIssues.find((i) => i.number === num)
+                  return (
+                    <div key={num}>
+                      {related ? (
+                        <button
+                          onClick={() => onSelectIssue(related)}
+                          className={`text-xs hover:underline ${related.state === 'closed' ? 'text-gray-400 line-through' : 'text-blue-600 hover:text-blue-800'}`}
+                        >
+                          #{num} {related.title}
+                          {related.state === 'closed' && ' (Closed)'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">#{num}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* 親課題 */}
         {hierarchy.parentMap.has(issue.number) && (() => {

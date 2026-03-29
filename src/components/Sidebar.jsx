@@ -1,8 +1,11 @@
 const NAV_ITEMS = [
+  { key: 'dashboard', name: 'ダッシュボード', icon: '🏠' },
   { key: 'issues', name: '課題', icon: '📋' },
   { key: 'board', name: 'ボード', icon: '📊' },
   { key: 'gantt', name: 'ガントチャート', icon: '📅' },
+  { key: 'calendar', name: 'カレンダー', icon: '🗓' },
   { key: 'burndown', name: 'バーンダウン', icon: '📉' },
+  { key: 'activity', name: '更新履歴', icon: '🔔' },
   { key: 'settings', name: '設定', icon: '⚙' },
 ]
 

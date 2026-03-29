@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { createIssue, updateIssueBody } from '../api/github'
+import { createIssue, updateIssueBody, setMilestone } from '../api/github'
 import { insertDeadlineToBody } from '../utils/deadline'
 import { appendChildToBody } from '../utils/hierarchy'
 
-function NewTaskModal({ allIssues, hierarchy, priorityLabels, categoryLabels, statusLabels, onClose, onCreated }) {
+function NewTaskModal({ allIssues, hierarchy, milestones, priorityLabels, categoryLabels, statusLabels, onClose, onCreated }) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [priority, setPriority] = useState('')
@@ -11,6 +11,7 @@ function NewTaskModal({ allIssues, hierarchy, priorityLabels, categoryLabels, st
   const [status, setStatus] = useState('')
   const [deadline, setDeadline] = useState('')
   const [parentNumber, setParentNumber] = useState('')
+  const [milestoneNumber, setMilestoneNumber] = useState('')
   const [creating, setCreating] = useState(false)
 
   // 親課題の候補（他の Issue の子でないもの）
@@ -29,6 +30,15 @@ function NewTaskModal({ allIssues, hierarchy, priorityLabels, categoryLabels, st
 
       const issueBody = insertDeadlineToBody(body, deadline)
       const created = await createIssue(title.trim(), issueBody, labels)
+
+      // マイルストーンが選択されている場合、設定
+      if (milestoneNumber && created?.number) {
+        try {
+          await setMilestone(created.number, parseInt(milestoneNumber, 10))
+        } catch {
+          // マイルストーン設定失敗は無視（Issue は作成済み）
+        }
+      }
 
       // 親課題が選択されている場合、親の本文にタスクリストを追記
       if (parentNumber && created?.number) {
@@ -190,6 +200,26 @@ function NewTaskModal({ allIssues, hierarchy, priorityLabels, categoryLabels, st
                   <option key={c.name} value={c.name}>
                     {c.name}
                   </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* マイルストーン */}
+          {milestones && milestones.filter((m) => m.state === 'open').length > 0 && (
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">
+                マイルストーン
+              </label>
+              <select
+                aria-label="マイルストーン"
+                value={milestoneNumber}
+                onChange={(e) => setMilestoneNumber(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white text-gray-700"
+              >
+                <option value="">なし</option>
+                {milestones.filter((m) => m.state === 'open').map((m) => (
+                  <option key={m.number} value={m.number}>{m.title}</option>
                 ))}
               </select>
             </div>

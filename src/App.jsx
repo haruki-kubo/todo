@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { fetchIssues, fetchAllIssues, fetchLabels } from './api/github'
+import { fetchIssues, fetchAllIssues, fetchLabels, fetchMilestones, fetchCollaborators } from './api/github'
 import { classifyLabels } from './utils/labels'
 import { buildHierarchy } from './utils/hierarchy'
 import TokenInput from './components/TokenInput'
@@ -10,6 +10,9 @@ import IssueDetailPanel from './components/IssueDetailPanel'
 import BoardView from './components/BoardView'
 import GanttChart from './components/GanttChart'
 import BurndownChart from './components/BurndownChart'
+import CalendarView from './components/CalendarView'
+import ActivityFeed from './components/ActivityFeed'
+import Dashboard from './components/Dashboard'
 import SettingsView from './components/SettingsView'
 import NewTaskModal from './components/NewTaskModal'
 
@@ -20,9 +23,11 @@ function App() {
   const [priorityLabels, setPriorityLabels] = useState([])
   const [categoryLabels, setCategoryLabels] = useState([])
   const [statusLabels, setStatusLabels] = useState([])
+  const [milestones, setMilestones] = useState([])
+  const [collaborators, setCollaborators] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [activeView, setActiveView] = useState('issues')
+  const [activeView, setActiveView] = useState('dashboard')
   const [selectedIssue, setSelectedIssue] = useState(null)
   const [showNewTask, setShowNewTask] = useState(false)
 
@@ -30,13 +35,17 @@ function App() {
     setLoading(true)
     setError(null)
     try {
-      const [issuesData, allIssuesData, labelsData] = await Promise.all([
+      const [issuesData, allIssuesData, labelsData, milestonesData, collaboratorsData] = await Promise.all([
         fetchIssues(),
         fetchAllIssues(),
         fetchLabels(),
+        fetchMilestones(),
+        fetchCollaborators(),
       ])
       setIssues(issuesData)
       setAllIssues(allIssuesData)
+      setMilestones(milestonesData)
+      setCollaborators(collaboratorsData)
       // selectedIssue を最新データに同期
       setSelectedIssue((prev) => {
         if (!prev) return null
@@ -68,6 +77,8 @@ function App() {
     setToken(null)
     setIssues([])
     setAllIssues([])
+    setMilestones([])
+    setCollaborators([])
     setPriorityLabels([])
     setCategoryLabels([])
     setStatusLabels([])
@@ -101,6 +112,8 @@ function App() {
         issue={selectedIssue}
         allIssues={allIssues}
         hierarchy={hierarchy}
+        milestones={milestones}
+        collaborators={collaborators}
         priorityLabels={priorityLabels}
         categoryLabels={categoryLabels}
         statusLabels={statusLabels}
@@ -111,6 +124,47 @@ function App() {
     )
 
     switch (activeView) {
+      case 'dashboard':
+        return (
+          <div className="flex flex-1 min-h-0">
+            <div className="flex-1 flex flex-col min-w-0">
+              <Dashboard
+                issues={issues}
+                priorityLabels={priorityLabels}
+                statusLabels={statusLabels}
+                milestones={milestones}
+                onSelectIssue={setSelectedIssue}
+                onViewChange={setActiveView}
+              />
+            </div>
+            {detailPanel}
+          </div>
+        )
+      case 'calendar':
+        return (
+          <div className="flex flex-1 min-h-0">
+            <div className="flex-1 flex flex-col min-w-0">
+              <CalendarView
+                issues={issues}
+                onSelectIssue={setSelectedIssue}
+                selectedIssueId={selectedIssue?.id}
+              />
+            </div>
+            {detailPanel}
+          </div>
+        )
+      case 'activity':
+        return (
+          <div className="flex flex-1 min-h-0">
+            <div className="flex-1 flex flex-col min-w-0">
+              <ActivityFeed
+                allIssues={allIssues}
+                onSelectIssue={setSelectedIssue}
+              />
+            </div>
+            {detailPanel}
+          </div>
+        )
       case 'burndown':
         return <BurndownChart />
       case 'settings':
@@ -196,6 +250,7 @@ function App() {
         <NewTaskModal
           allIssues={allIssues}
           hierarchy={hierarchy}
+          milestones={milestones}
           priorityLabels={priorityLabels}
           categoryLabels={categoryLabels}
           statusLabels={statusLabels}

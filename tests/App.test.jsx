@@ -6,12 +6,16 @@ const apiMocks = vi.hoisted(() => ({
   fetchIssues: vi.fn(),
   fetchAllIssues: vi.fn(),
   fetchLabels: vi.fn(),
+  fetchMilestones: vi.fn(),
+  fetchCollaborators: vi.fn(),
 }))
 
 vi.mock('../src/api/github.js', () => ({
   fetchIssues: apiMocks.fetchIssues,
   fetchAllIssues: apiMocks.fetchAllIssues,
   fetchLabels: apiMocks.fetchLabels,
+  fetchMilestones: apiMocks.fetchMilestones,
+  fetchCollaborators: apiMocks.fetchCollaborators,
 }))
 
 vi.mock('../src/utils/labels.js', async () => {
@@ -74,6 +78,26 @@ vi.mock('../src/components/BoardView.jsx', () => ({
   default: () => <div>Board View</div>,
 }))
 
+vi.mock('../src/components/BurndownChart.jsx', () => ({
+  default: () => <div>Burndown View</div>,
+}))
+
+vi.mock('../src/components/CalendarView.jsx', () => ({
+  default: () => <div>Calendar View</div>,
+}))
+
+vi.mock('../src/components/ActivityFeed.jsx', () => ({
+  default: () => <div>Activity View</div>,
+}))
+
+vi.mock('../src/components/Dashboard.jsx', () => ({
+  default: ({ issues }) => <div>Dashboard:{issues.length}</div>,
+}))
+
+vi.mock('../src/components/SettingsView.jsx', () => ({
+  default: () => <div>Settings View</div>,
+}))
+
 vi.mock('../src/components/GanttChart.jsx', () => ({
   default: () => <div>Gantt View</div>,
 }))
@@ -124,6 +148,8 @@ beforeEach(() => {
   apiMocks.fetchIssues.mockResolvedValue(issues)
   apiMocks.fetchAllIssues.mockResolvedValue(issues)
   apiMocks.fetchLabels.mockResolvedValue([])
+  apiMocks.fetchMilestones.mockResolvedValue([])
+  apiMocks.fetchCollaborators.mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -147,9 +173,11 @@ describe('App', () => {
     await waitFor(() => {
       expect(apiMocks.fetchIssues).toHaveBeenCalled()
       expect(apiMocks.fetchLabels).toHaveBeenCalled()
+      expect(apiMocks.fetchMilestones).toHaveBeenCalled()
+      expect(apiMocks.fetchCollaborators).toHaveBeenCalled()
     })
 
-    expect(screen.getByText('IssueTable:1')).toBeInTheDocument()
+    expect(screen.getByText('Dashboard:1')).toBeInTheDocument()
     expect(screen.getByText('1 issues')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Go Board' }))
@@ -163,11 +191,8 @@ describe('App', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('IssueTable:1')).toBeInTheDocument()
+      expect(screen.getByText('Dashboard:1')).toBeInTheDocument()
     })
-
-    await user.click(screen.getByRole('button', { name: 'Select Issue' }))
-    expect(screen.getByText('IssueDetail:App Test Issue')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Open Modal' }))
     expect(screen.getByText('NewTaskModal')).toBeInTheDocument()
@@ -180,7 +205,7 @@ describe('App', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('IssueTable:1')).toBeInTheDocument()
+      expect(screen.getByText('Dashboard:1')).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: 'Logout' }))
