@@ -265,24 +265,32 @@ export async function verifyToken(token) {
     Authorization: `token ${token}`,
     Accept: 'application/vnd.github.v3+json',
   }
-  // ユーザー認証
+  // ステップ1: トークン自体の有効性を確認
   const userRes = await fetch(`${API_BASE}/user`, { headers })
-  if (!userRes.ok) return { valid: false, error: 'トークンが無効です。' }
+  if (userRes.status === 401) {
+    return { valid: false, error: 'トークンが正しくありません。コピーし直してお試しください。' }
+  }
+  if (!userRes.ok) {
+    return { valid: false, error: `GitHub への接続に失敗しました（${userRes.status}）。しばらく待ってから再度お試しください。` }
+  }
 
-  // 対象リポジトリへのアクセス確認
+  // ステップ2: 対象リポジトリへのアクセス確認
   if (REPO_OWNER && REPO_NAME) {
     const repoRes = await fetch(`${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}`, { headers })
+    if (repoRes.status === 404 || repoRes.status === 403) {
+      return { valid: false, error: `リポジトリ「${REPO_OWNER}/${REPO_NAME}」にアクセスできません。トークン発行時に対象リポジトリを選択しているか確認してください。` }
+    }
     if (!repoRes.ok) {
-      return { valid: false, error: `リポジトリ ${REPO_OWNER}/${REPO_NAME} にアクセスできません。トークンの権限を確認してください。` }
+      return { valid: false, error: `リポジトリの確認に失敗しました（${repoRes.status}）。` }
     }
 
-    // Issue の書き込み権限を確認（ラベル作成を試みて 403 / 404 なら read-only と判定）
+    // ステップ3: 書き込み権限を確認
     const writeCheckRes = await fetch(
       `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/labels`,
       { method: 'POST', headers, body: JSON.stringify({ name: '__write_check__' }) }
     )
     if (writeCheckRes.status === 403 || writeCheckRes.status === 404) {
-      return { valid: false, error: `リポジトリ ${REPO_OWNER}/${REPO_NAME} への書き込み権限がありません。Issues: Read and write 権限のトークンを使用してください。` }
+      return { valid: false, error: '読み取り専用のトークンです。トークンの権限を「Issues: Read and write」に変更してください。' }
     }
     // 作成成功してしまった場合は即削除
     if (writeCheckRes.status === 201) {
