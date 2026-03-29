@@ -21,6 +21,7 @@
 | 2026-03-28 | 2.4 | IssueTable に `filterParentOnly` 状態を追加。フィルター処理順序に親タスクのみフィルターを追加。`isFiltering` 判定に `filterParentOnly` を含める |
 | 2026-03-28 | 2.5 | `fetchMilestones`・`fetchMilestoneIssues` API を追加。`BurndownChart` コンポーネントを新規作成。Sidebar に `burndown` メニューを追加。App.jsx に `burndown` ビューを統合 |
 | 2026-03-28 | 2.6 | BurndownChart の開始日を Milestone description の `開始日: YYYY-MM-DD` / `YYYY/MM/DD` で上書き可能に変更。未指定時は最古の Issue 作成日にフォールバック |
+| 2026-03-29 | 2.7 | ラベル CRUD API（`createLabel` / `updateLabel` / `deleteLabel`）とマイルストーン CRUD API（`createMilestone` / `updateMilestone` / `deleteMilestone`）を追加。`SettingsView` コンポーネントを新規作成。Sidebar に `settings` メニューを追加 |
 
 ---
 
@@ -92,6 +93,7 @@ src/
     ├── BoardView.jsx         # ボードビュー（カンバン + D&D）
     ├── GanttChart.jsx        # ガントチャートビュー
     ├── BurndownChart.jsx     # バーンダウンチャートビュー
+    ├── SettingsView.jsx      # 設定画面（ラベル・マイルストーン管理）
     ├── TaskCard.jsx          # ボード用カード
     ├── NewTaskModal.jsx      # 新規課題作成モーダル
     └── CommentForm.jsx       # コメント入力フォーム

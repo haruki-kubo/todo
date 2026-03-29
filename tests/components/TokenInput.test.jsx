@@ -27,10 +27,11 @@ describe('TokenInput', () => {
 
     render(<TokenInput onTokenSet={() => {}} />)
 
+    const tokenInput = screen.getByLabelText('GitHub Personal Access Token')
     const submit = screen.getByRole('button', { name: '接続する' })
     expect(submit).toBeDisabled()
 
-    await user.type(screen.getByPlaceholderText('ghp_xxxxxxxxxxxx'), 'ghp_test')
+    await user.type(tokenInput, 'ghp_test')
 
     expect(submit).toBeEnabled()
   })
@@ -42,7 +43,7 @@ describe('TokenInput', () => {
 
     render(<TokenInput onTokenSet={onTokenSet} />)
 
-    await user.type(screen.getByPlaceholderText('ghp_xxxxxxxxxxxx'), ' ghp_valid ')
+    await user.type(screen.getByLabelText('GitHub Personal Access Token'), ' ghp_valid ')
     await user.click(screen.getByRole('button', { name: '接続する' }))
 
     await waitFor(() => {
@@ -57,7 +58,7 @@ describe('TokenInput', () => {
 
     render(<TokenInput onTokenSet={() => {}} />)
 
-    await user.type(screen.getByPlaceholderText('ghp_xxxxxxxxxxxx'), 'ghp_invalid')
+    await user.type(screen.getByLabelText('GitHub Personal Access Token'), 'ghp_invalid')
     await user.click(screen.getByRole('button', { name: '接続する' }))
 
     expect(await screen.findByText('トークンが無効です。権限を確認してください。')).toBeInTheDocument()
@@ -69,7 +70,7 @@ describe('TokenInput', () => {
 
     render(<TokenInput onTokenSet={() => {}} />)
 
-    await user.type(screen.getByPlaceholderText('ghp_xxxxxxxxxxxx'), 'ghp_error')
+    await user.type(screen.getByLabelText('GitHub Personal Access Token'), 'ghp_error')
     await user.click(screen.getByRole('button', { name: '接続する' }))
 
     expect(await screen.findByText('接続エラーが発生しました。')).toBeInTheDocument()

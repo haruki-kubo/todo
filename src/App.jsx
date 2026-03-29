@@ -10,6 +10,7 @@ import IssueDetailPanel from './components/IssueDetailPanel'
 import BoardView from './components/BoardView'
 import GanttChart from './components/GanttChart'
 import BurndownChart from './components/BurndownChart'
+import SettingsView from './components/SettingsView'
 import NewTaskModal from './components/NewTaskModal'
 
 function App() {
@@ -112,6 +113,8 @@ function App() {
     switch (activeView) {
       case 'burndown':
         return <BurndownChart />
+      case 'settings':
+        return <SettingsView onDataChanged={loadData} />
       case 'board':
         return (
           <div className="flex flex-1 min-h-0">

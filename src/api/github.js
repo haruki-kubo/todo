@@ -122,6 +122,56 @@ export async function fetchLabels() {
   return labels
 }
 
+// ラベルを作成
+export async function createLabel(name, color, description) {
+  return request(`/repos/${REPO_OWNER}/${REPO_NAME}/labels`, {
+    method: 'POST',
+    body: JSON.stringify({ name, color: color.replace('#', ''), description }),
+  })
+}
+
+// ラベルを更新
+export async function updateLabel(currentName, newName, color, description) {
+  return request(`/repos/${REPO_OWNER}/${REPO_NAME}/labels/${encodeURIComponent(currentName)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ new_name: newName, color: color.replace('#', ''), description }),
+  })
+}
+
+// ラベルを削除
+export async function deleteLabel(name) {
+  return request(`/repos/${REPO_OWNER}/${REPO_NAME}/labels/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  })
+}
+
+// マイルストーンを作成
+export async function createMilestone(title, description, dueOn) {
+  const body = { title, description }
+  if (dueOn) body.due_on = new Date(dueOn).toISOString()
+  return request(`/repos/${REPO_OWNER}/${REPO_NAME}/milestones`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+// マイルストーンを更新
+export async function updateMilestone(number, title, description, dueOn, state) {
+  const body = { title, description, state }
+  if (dueOn) body.due_on = new Date(dueOn).toISOString()
+  return request(`/repos/${REPO_OWNER}/${REPO_NAME}/milestones/${number}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+}
+
+// マイルストーンを削除
+export async function deleteMilestone(number) {
+  return request(`/repos/${REPO_OWNER}/${REPO_NAME}/milestones/${number}`, {
+    method: 'DELETE',
+  })
+}
+
 // マイルストーン一覧を取得
 export async function fetchMilestones() {
   const milestones = []

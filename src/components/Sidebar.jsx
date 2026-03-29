@@ -3,6 +3,7 @@ const NAV_ITEMS = [
   { key: 'board', name: 'ボード', icon: '📊' },
   { key: 'gantt', name: 'ガントチャート', icon: '📅' },
   { key: 'burndown', name: 'バーンダウン', icon: '📉' },
+  { key: 'settings', name: '設定', icon: '⚙' },
 ]
 
 function Sidebar({ activeView, onViewChange, onAdd }) {

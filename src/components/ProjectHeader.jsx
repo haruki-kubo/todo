@@ -6,6 +6,7 @@ const VIEW_TITLES = {
   board: 'ボード',
   gantt: 'ガントチャート',
   burndown: 'バーンダウンチャート',
+  settings: '設定',
 }
 
 function ProjectHeader({ activeView, issueCount, onLogout, onRefresh, loading }) {

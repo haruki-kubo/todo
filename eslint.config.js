@@ -27,7 +27,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['playwright.config.js', 'tests/e2e/**/*.js'],
+    files: ['vite.config.js', 'playwright.config.js', 'tests/e2e/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.browser,

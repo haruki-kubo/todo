@@ -21,6 +21,7 @@
 | 2026-03-28 | 2.4 | 課題一覧に「親タスクのみ」フィルター（チェックボックス）を追加 |
 | 2026-03-28 | 2.5 | バーンダウンチャート機能を追加（Milestone ベース） |
 | 2026-03-28 | 2.6 | バーンダウンチャートの開始日を Milestone description の `開始日: YYYY-MM-DD` で上書き可能に変更 |
+| 2026-03-29 | 2.7 | 設定画面を追加（ステータス・優先度・カテゴリラベルの CRUD、マイルストーンの CRUD） |
 
 ---
 
@@ -460,7 +461,45 @@ GitHub Milestone に紐づく Issue の残課題数を時系列で可視化す�
 
 ---
 
-## 9. 新規課題作成（NewTaskModal）
+## 9. 設定画面（SettingsView）
+
+サイドバーの「設定」メニューからアクセスする管理画面。
+
+### 9.1 タブ構成
+
+| タブ | 管理対象 | 対応する GitHub リソース |
+|------|---------|----------------------|
+| ステータス | ステータスラベル | Label（description に `status` を含む） |
+| 優先度 | 優先度ラベル | Label（description に `priority` を含む） |
+| カテゴリ | カテゴリラベル | Label（description に `category` を含む） |
+| マイルストーン | マイルストーン | Milestone |
+
+### 9.2 ラベル管理（ステータス・優先度・カテゴリ共通）
+
+| 操作 | 仕様 |
+|------|------|
+| 一覧表示 | 色ドット + ラベル名 + 順序番号。description の分類に基づいてフィルター表示 |
+| 作成 | 色選択 + ラベル名 + 順序番号を入力。description は `keyword:N` 形式で自動生成 |
+| 編集 | 一覧の「編集」ボタンでインライン編集フォームを表示 |
+| 削除 | 確認ダイアログ後に削除。該当ラベルが付与された Issue からも自動除去される |
+
+### 9.3 マイルストーン管理
+
+| 操作 | 仕様 |
+|------|------|
+| 一覧表示 | 状態バッジ（Open/Closed）+ タイトル + 期限日 + 説明 |
+| 作成 | タイトル + 期限日 + 説明を入力 |
+| 編集 | 一覧の「編集」ボタンでインライン編集フォームを表示 |
+| Close/Reopen | 状態の切り替え |
+| 削除 | 確認ダイアログ後に削除。紐づく Issue のマイルストーンが解除される |
+
+### 9.4 データ連携
+
+設定画面で変更を行うと、`onDataChanged` コールバックで App.jsx の `loadData` が呼ばれ、課題一覧・ボード等の表示が最新化される。
+
+---
+
+## 10. 新規課題作成（NewTaskModal）
 
 | フィールド | 必須 | UI | 備考 |
 |-----------|------|-----|------|
@@ -477,7 +516,7 @@ GitHub Milestone に紐づく Issue の残課題数を時系列で可視化す�
 
 ---
 
-## 10. GitHub API 利用
+## 11. GitHub API 利用
 
 | 操作 | エンドポイント | メソッド | ページネーション |
 |------|---------------|---------|----------------|
@@ -492,6 +531,12 @@ GitHub Milestone に紐づく Issue の残課題数を時系列で可視化す�
 | Issue 本文更新 | `/repos/{owner}/{repo}/issues/{number}` | PATCH | - |
 | Milestone 一覧取得 | `/repos/{owner}/{repo}/milestones?state=all` | GET | 100件/ページ、全件取得 |
 | Milestone Issue 取得 | `/repos/{owner}/{repo}/issues?milestone={number}&state=all` | GET | 100件/ページ、全件取得。PR 除外 |
+| ラベル作成 | `/repos/{owner}/{repo}/labels` | POST | - |
+| ラベル更新 | `/repos/{owner}/{repo}/labels/{name}` | PATCH | - |
+| ラベル削除 | `/repos/{owner}/{repo}/labels/{name}` | DELETE | - |
+| Milestone 作成 | `/repos/{owner}/{repo}/milestones` | POST | - |
+| Milestone 更新 | `/repos/{owner}/{repo}/milestones/{number}` | PATCH | - |
+| Milestone 削除 | `/repos/{owner}/{repo}/milestones/{number}` | DELETE | - |
 | トークン検証 | `/user` | GET | - |
 
 - 全リクエストに `Authorization: token {PAT}` ヘッダーを付与
@@ -501,7 +546,7 @@ GitHub Milestone に紐づく Issue の残課題数を時系列で可視化す�
 
 ---
 
-## 11. ファイル構成
+## 12. ファイル構成
 
 ```
 src/
@@ -522,6 +567,7 @@ src/
     ├── BoardView.jsx         # ボードビュー（カンバン + D&D）
     ├── GanttChart.jsx        # ガントチャートビュー
     ├── BurndownChart.jsx     # バーンダウンチャートビュー
+    ├── SettingsView.jsx      # 設定画面（ラベル・マイルストーン管理）
     ├── TaskCard.jsx          # ボード用カードコンポーネント
     ├── NewTaskModal.jsx      # 新規課題作成モーダル
     ├── CommentForm.jsx       # コメント入力フォーム
@@ -530,7 +576,7 @@ src/
 
 ---
 
-## 12. 環境変数
+## 13. 環境変数
 
 | 変数名 | 説明 | 例 |
 |--------|------|-----|
