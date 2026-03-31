@@ -32,17 +32,36 @@ function App() {
   const [selectedIssue, setSelectedIssue] = useState(null)
   const [showNewTask, setShowNewTask] = useState(false)
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (syncOptions = null) => {
     setLoading(true)
     setError(null)
     try {
-      const [issuesData, allIssuesData, labelsData, milestonesData, collaboratorsData] = await Promise.all([
-        fetchIssues(),
-        fetchAllIssues(),
-        fetchLabels(),
-        fetchMilestones(),
-        fetchCollaborators(),
-      ])
+      let latestData = null
+      const maxAttempts = syncOptions ? 5 : 1
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const [issuesData, allIssuesData, labelsData, milestonesData, collaboratorsData] = await Promise.all([
+          fetchIssues(),
+          fetchAllIssues(),
+          fetchLabels(),
+          fetchMilestones(),
+          fetchCollaborators(),
+        ])
+        latestData = { issuesData, allIssuesData, labelsData, milestonesData, collaboratorsData }
+
+        if (!syncOptions) break
+
+        const targetIssue = allIssuesData.find((i) => i.number === syncOptions.issueNumber)
+        if (targetIssue && syncOptions.isSynced(targetIssue)) {
+          break
+        }
+
+        if (attempt < maxAttempts - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500))
+        }
+      }
+
+      const { issuesData, allIssuesData, labelsData, milestonesData, collaboratorsData } = latestData
       setIssues(issuesData)
       setAllIssues(allIssuesData)
       setMilestones(milestonesData)
@@ -51,7 +70,16 @@ function App() {
       // selectedIssue を最新データに同期（allIssues ベースで検索）
       setSelectedIssue((prev) => {
         if (!prev) return null
-        return allIssuesData.find((i) => i.id === prev.id) || null
+        const fetchedIssue = allIssuesData.find((i) => i.id === prev.id)
+        if (!fetchedIssue) return null
+        if (
+          syncOptions &&
+          prev.number === syncOptions.issueNumber &&
+          !syncOptions.isSynced(fetchedIssue)
+        ) {
+          return prev
+        }
+        return fetchedIssue
       })
       const { priorityLabels: pl, categoryLabels: cl, statusLabels: sl } = classifyLabels(labelsData)
       setPriorityLabels(pl)

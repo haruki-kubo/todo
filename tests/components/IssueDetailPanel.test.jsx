@@ -11,6 +11,7 @@ const githubApiMocks = vi.hoisted(() => ({
   setLabels: vi.fn(),
   setMilestone: vi.fn(),
   setAssignees: vi.fn(),
+  updateIssueBody: vi.fn(),
 }))
 
 vi.mock('../../src/api/github.js', () => ({
@@ -20,6 +21,7 @@ vi.mock('../../src/api/github.js', () => ({
   setLabels: githubApiMocks.setLabels,
   setMilestone: githubApiMocks.setMilestone,
   setAssignees: githubApiMocks.setAssignees,
+  updateIssueBody: githubApiMocks.updateIssueBody,
 }))
 
 const priorityLabels = [
@@ -99,6 +101,7 @@ beforeEach(() => {
   githubApiMocks.setLabels.mockResolvedValue([])
   githubApiMocks.setMilestone.mockResolvedValue({})
   githubApiMocks.setAssignees.mockResolvedValue({})
+  githubApiMocks.updateIssueBody.mockResolvedValue({})
   vi.stubGlobal('alert', vi.fn())
   vi.stubGlobal('confirm', vi.fn(() => true))
 })
@@ -142,16 +145,19 @@ describe('IssueDetailPanel', () => {
     expect(await screen.findByText('追加コメント')).toBeInTheDocument()
   })
 
-  test('updates labels and calls onUpdate when status is changed', async () => {
+  test('updates labels only after pressing save when status is changed', async () => {
     const user = userEvent.setup()
     const onUpdate = vi.fn()
 
     renderPanel({ onUpdate })
 
     await user.click(screen.getByRole('button', { name: '処理中' }))
+    expect(githubApiMocks.setLabels).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: '更新する' }))
 
     await waitFor(() => {
-      expect(githubApiMocks.setLabels).toHaveBeenCalledWith(101, ['🔴 緊急', '🏢 経理総務', '分類対象外', '処理中'])
+      expect(githubApiMocks.setLabels).toHaveBeenCalledWith(101, ['分類対象外', '処理中', '🔴 緊急', '🏢 経理総務'])
     })
     expect(onUpdate).toHaveBeenCalled()
   })

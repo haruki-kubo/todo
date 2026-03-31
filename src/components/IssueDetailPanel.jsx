@@ -3,7 +3,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { fetchComments, closeIssue, setLabels, setMilestone, setAssignees, updateIssueBody } from '../api/github'
 import { getCategoryLabel, getPriorityLabel, getStatusLabel } from '../utils/labels'
-import { parseDeadline, parseStartDate, getDeadlineInfo, insertDeadlineToBody } from '../utils/deadline'
+import { parseDeadline, parseStartDate, getDeadlineInfo } from '../utils/deadline'
 import { parseChildNumbers, getSubtaskProgress, parseRelatedNumbers } from '../utils/hierarchy'
 import CommentForm from './CommentForm'
 
@@ -13,6 +13,13 @@ const REPO_NAME = import.meta.env.VITE_REPO_NAME || ''
 function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborators, collaboratorsError, priorityLabels, categoryLabels, statusLabels, onClose, onUpdate, onSelectIssue }) {
   const [comments, setComments] = useState(null)
   const [operating, setOperating] = useState(false)
+  const [draftAssignee, setDraftAssignee] = useState('')
+  const [draftStatus, setDraftStatus] = useState('')
+  const [draftPriority, setDraftPriority] = useState('')
+  const [draftCategory, setDraftCategory] = useState('')
+  const [draftStartDate, setDraftStartDate] = useState('')
+  const [draftDeadline, setDraftDeadline] = useState('')
+  const [draftMilestone, setDraftMilestone] = useState('')
   const fetchedRef = useRef(null)
 
   useEffect(() => {
@@ -24,25 +31,111 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
       .catch(() => setComments([]))
   }, [issue.number])
 
-  const priority = getPriorityLabel(issue, priorityLabels)
-  const category = getCategoryLabel(issue, categoryLabels)
-  const status = getStatusLabel(issue, statusLabels)
+  useEffect(() => {
+    const formatDate = (date) => (
+      date
+        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        : ''
+    )
+    setDraftAssignee(issue.assignee?.login || '')
+    setDraftStatus(getStatusLabel(issue, statusLabels)?.name || '')
+    setDraftPriority(getPriorityLabel(issue, priorityLabels)?.name || '')
+    setDraftCategory(getCategoryLabel(issue, categoryLabels)?.name || '')
+    setDraftStartDate(formatDate(parseStartDate(issue.body)))
+    setDraftDeadline(formatDate(parseDeadline(issue.body)))
+    setDraftMilestone(issue.milestone?.number ? String(issue.milestone.number) : '')
+  }, [issue, priorityLabels, categoryLabels, statusLabels])
+
   const issueStartDate = parseStartDate(issue.body)
   const deadline = parseDeadline(issue.body)
-  const deadlineInfo = getDeadlineInfo(deadline)
+  const deadlineInfo = getDeadlineInfo(draftDeadline ? new Date(`${draftDeadline}T00:00:00`) : null)
 
-  const handleLabelChange = async (newLabelName, labelGroup) => {
+  const buildBodyWithDates = (body, startDateStr, deadlineStr) => {
+    const lines = (body || '')
+      .split('\n')
+      .filter((line) => !/^📅\s*(開始日|期限)[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*$/.test(line))
+
+    const dateLines = []
+    if (startDateStr) dateLines.push(`📅 開始日: ${startDateStr}`)
+    if (deadlineStr) dateLines.push(`📅 期限: ${deadlineStr}`)
+
+    const textBody = lines.join('\n').trim()
+    if (dateLines.length === 0) return textBody
+    if (!textBody) return dateLines.join('\n')
+    return `${dateLines.join('\n')}\n\n${textBody}`
+  }
+
+  const hasChanges = (
+    draftAssignee !== (issue.assignee?.login || '') ||
+    draftStatus !== (getStatusLabel(issue, statusLabels)?.name || '') ||
+    draftPriority !== (getPriorityLabel(issue, priorityLabels)?.name || '') ||
+    draftCategory !== (getCategoryLabel(issue, categoryLabels)?.name || '') ||
+    draftStartDate !== (issueStartDate ? `${issueStartDate.getFullYear()}-${String(issueStartDate.getMonth() + 1).padStart(2, '0')}-${String(issueStartDate.getDate()).padStart(2, '0')}` : '') ||
+    draftDeadline !== (deadline ? `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')}` : '') ||
+    draftMilestone !== (issue.milestone?.number ? String(issue.milestone.number) : '')
+  )
+
+  const handleSaveChanges = async () => {
+    if (!hasChanges) return
+
     setOperating(true)
     try {
-      const currentLabels = issue.labels.map((l) => l.name)
-      const withoutGroup = currentLabels.filter(
-        (name) => !labelGroup.some((l) => l.name === name)
-      )
-      const updatedLabels = await setLabels(issue.number, [...withoutGroup, newLabelName])
-      onSelectIssue?.({ ...issue, labels: updatedLabels })
-      await onUpdate()
+      const currentLabels = issue.labels.map((label) => label.name)
+      const managedLabels = new Set([
+        ...statusLabels.map((label) => label.name),
+        ...priorityLabels.map((label) => label.name),
+        ...categoryLabels.map((label) => label.name),
+      ])
+      const baseLabels = currentLabels.filter((name) => !managedLabels.has(name))
+      const nextLabelNames = [...baseLabels]
+      if (draftStatus) nextLabelNames.push(draftStatus)
+      if (draftPriority) nextLabelNames.push(draftPriority)
+      if (draftCategory) nextLabelNames.push(draftCategory)
+
+      const nextBody = buildBodyWithDates(issue.body || '', draftStartDate, draftDeadline)
+      const nextAssignee = draftAssignee || null
+      const nextMilestone = draftMilestone ? parseInt(draftMilestone, 10) : null
+
+      let nextIssue = issue
+      const currentLabelNames = issue.labels.map((label) => label.name).sort()
+      const sortedNextLabelNames = [...nextLabelNames].sort()
+      const labelsChanged =
+        currentLabelNames.length !== sortedNextLabelNames.length ||
+        currentLabelNames.some((name, index) => name !== sortedNextLabelNames[index])
+
+      if (labelsChanged) {
+        const updatedLabels = await setLabels(issue.number, nextLabelNames)
+        nextIssue = { ...nextIssue, labels: updatedLabels }
+      }
+
+      if ((issue.body || '') !== nextBody) {
+        nextIssue = await updateIssueBody(issue.number, nextBody)
+      }
+
+      if ((issue.assignee?.login || null) !== nextAssignee) {
+        nextIssue = await setAssignees(issue.number, nextAssignee ? [nextAssignee] : [])
+      }
+
+      if ((issue.milestone?.number || null) !== nextMilestone) {
+        nextIssue = await setMilestone(issue.number, nextMilestone)
+      }
+
+      onSelectIssue?.(nextIssue)
+      await onUpdate({
+        issueNumber: issue.number,
+        isSynced: (fetchedIssue) => {
+          const fetchedLabelNames = fetchedIssue.labels.map((label) => label.name).sort()
+          return (
+            fetchedLabelNames.length === sortedNextLabelNames.length &&
+            fetchedLabelNames.every((name, index) => name === sortedNextLabelNames[index]) &&
+            (fetchedIssue.body || '') === nextBody &&
+            (fetchedIssue.assignee?.login || null) === nextAssignee &&
+            (fetchedIssue.milestone?.number || null) === nextMilestone
+          )
+        },
+      })
     } catch (e) {
-      alert('ラベル変更に失敗しました: ' + e.message)
+      alert('課題更新に失敗しました: ' + e.message)
     } finally {
       setOperating(false)
     }
@@ -93,19 +186,8 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 w-16 shrink-0">担当者</span>
             <select
-              value={issue.assignee?.login || ''}
-              onChange={async (e) => {
-                setOperating(true)
-                try {
-                  const updatedIssue = await setAssignees(issue.number, e.target.value ? [e.target.value] : [])
-                  onSelectIssue?.(updatedIssue)
-                  await onUpdate()
-                } catch (err) {
-                  alert('担当者変更に失敗しました: ' + err.message)
-                } finally {
-                  setOperating(false)
-                }
-              }}
+              value={draftAssignee}
+              onChange={(e) => setDraftAssignee(e.target.value)}
               disabled={operating}
               className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
             >
@@ -122,52 +204,56 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
             )}
           </div>
           {statusLabels.length > 0 && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               <span className="text-xs text-gray-400 w-16 shrink-0">状態</span>
-              {status ? (
-                <span
-                  className="text-[11px] px-2 py-0.5 rounded text-white"
-                  style={{ backgroundColor: status.color }}
-                >
-                  {status.name}
-                </span>
-              ) : (
-                <span className="text-xs text-gray-400">未設定</span>
-              )}
+              <div className="flex flex-wrap gap-1.5">
+                {statusLabels.map((s) => {
+                  const isCurrent = draftStatus === s.name
+                  return (
+                    <button
+                      key={s.name}
+                      onClick={() => setDraftStatus(s.name)}
+                      disabled={operating}
+                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors ${
+                        isCurrent
+                          ? 'border-blue-300 bg-blue-50 text-blue-600'
+                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                      } disabled:opacity-50`}
+                    >
+                      {s.name}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <span className="text-xs text-gray-400 w-16 shrink-0">優先度</span>
-            {priority ? (
-              <span className="text-xs flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: priority.color }} />
-                {priority.name}
-              </span>
-            ) : (
-              <span className="text-xs text-gray-400">未設定</span>
-            )}
+            <div className="flex flex-wrap gap-1.5">
+              {priorityLabels.map((p) => {
+                const isCurrent = draftPriority === p.name
+                return (
+                  <button
+                    key={p.name}
+                    onClick={() => setDraftPriority(p.name)}
+                    disabled={operating}
+                    className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors ${
+                      isCurrent
+                        ? 'border-blue-300 bg-blue-50 text-blue-600'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                    } disabled:opacity-50`}
+                  >
+                    {p.name}
+                  </button>
+                )
+              })}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 w-16 shrink-0">カテゴリ</span>
             <select
-              value={category?.name || ''}
-              onChange={async (e) => {
-                setOperating(true)
-                try {
-                  const currentLabels = issue.labels.map((l) => l.name)
-                  const withoutCategory = currentLabels.filter(
-                    (name) => !categoryLabels.some((c) => c.name === name)
-                  )
-                  const newLabels = e.target.value ? [...withoutCategory, e.target.value] : withoutCategory
-                  const updatedLabels = await setLabels(issue.number, newLabels)
-                  onSelectIssue?.({ ...issue, labels: updatedLabels })
-                  await onUpdate()
-                } catch (err) {
-                  alert('カテゴリ変更に失敗しました: ' + err.message)
-                } finally {
-                  setOperating(false)
-                }
-              }}
+              value={draftCategory}
+              onChange={(e) => setDraftCategory(e.target.value)}
               disabled={operating}
               className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
             >
@@ -181,32 +267,8 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
             <span className="text-xs text-gray-400 w-16 shrink-0">開始日</span>
             <input
               type="date"
-              value={issueStartDate ? `${issueStartDate.getFullYear()}-${String(issueStartDate.getMonth() + 1).padStart(2, '0')}-${String(issueStartDate.getDate()).padStart(2, '0')}` : ''}
-              onChange={async (e) => {
-                setOperating(true)
-                try {
-                  const currentBody = issue.body || ''
-                  const startRegex = /📅\s*開始日[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}/
-                  let newBody
-                  if (e.target.value) {
-                    const startLine = `📅 開始日: ${e.target.value}`
-                    if (startRegex.test(currentBody)) {
-                      newBody = currentBody.replace(startRegex, startLine)
-                    } else {
-                      newBody = currentBody ? `${startLine}\n${currentBody}` : startLine
-                    }
-                  } else {
-                    newBody = currentBody.replace(/📅\s*開始日[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*\n*/g, '').trim()
-                  }
-                  const updatedIssue = await updateIssueBody(issue.number, newBody)
-                  onSelectIssue?.(updatedIssue)
-                  await onUpdate()
-                } catch (err) {
-                  alert('開始日変更に失敗しました: ' + err.message)
-                } finally {
-                  setOperating(false)
-                }
-              }}
+              value={draftStartDate}
+              onChange={(e) => setDraftStartDate(e.target.value)}
               disabled={operating}
               className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
             />
@@ -216,33 +278,8 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
             <div className="flex items-center gap-2">
               <input
                 type="date"
-                value={deadline ? `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')}` : ''}
-                onChange={async (e) => {
-                  setOperating(true)
-                  try {
-                    const currentBody = issue.body || ''
-                    const deadlineRegex = /📅\s*期限[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}/
-                    let newBody
-                    if (e.target.value) {
-                      const deadlineLine = `📅 期限: ${e.target.value}`
-                      if (deadlineRegex.test(currentBody)) {
-                        newBody = currentBody.replace(deadlineRegex, deadlineLine)
-                      } else {
-                        newBody = insertDeadlineToBody(currentBody, e.target.value)
-                      }
-                    } else {
-                      // 期限を削除
-                      newBody = currentBody.replace(/📅\s*期限[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*\n*/g, '').trim()
-                    }
-                    const updatedIssue = await updateIssueBody(issue.number, newBody)
-                    onSelectIssue?.(updatedIssue)
-                    await onUpdate()
-                  } catch (err) {
-                    alert('期限変更に失敗しました: ' + err.message)
-                  } finally {
-                    setOperating(false)
-                  }
-                }}
+                value={draftDeadline}
+                onChange={(e) => setDraftDeadline(e.target.value)}
                 disabled={operating}
                 className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
               />
@@ -265,19 +302,8 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 w-16 shrink-0">MS</span>
             <select
-              value={issue.milestone?.number || ''}
-              onChange={async (e) => {
-                setOperating(true)
-                try {
-                  const updatedIssue = await setMilestone(issue.number, e.target.value ? parseInt(e.target.value, 10) : null)
-                  onSelectIssue?.(updatedIssue)
-                  await onUpdate()
-                } catch (err) {
-                  alert('マイルストーン変更に失敗しました: ' + err.message)
-                } finally {
-                  setOperating(false)
-                }
-              }}
+              value={draftMilestone}
+              onChange={(e) => setDraftMilestone(e.target.value)}
               disabled={operating}
               className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
             >
@@ -455,58 +481,15 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
           <CommentForm issueNumber={issue.number} onCommentAdded={handleCommentAdded} />
         </div>
 
-        {/* ステータス変更 */}
-        {statusLabels.length > 0 && (
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h4 className="text-xs font-medium text-gray-500 mb-2">状態変更</h4>
-            <div className="flex flex-wrap gap-1.5">
-              {statusLabels.map((s) => {
-                const isCurrent = status?.name === s.name
-                return (
-                  <button
-                    key={s.name}
-                    onClick={() => handleLabelChange(s.name, statusLabels)}
-                    disabled={isCurrent || operating}
-                    className={`text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors ${
-                      isCurrent
-                        ? 'border-blue-300 bg-blue-50 text-blue-600'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                    } disabled:opacity-50`}
-                  >
-                    {s.name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 優先度変更 */}
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h4 className="text-xs font-medium text-gray-500 mb-2">優先度変更</h4>
-          <div className="flex flex-wrap gap-1.5">
-            {priorityLabels.map((p) => {
-              const isCurrent = priority?.name === p.name
-              return (
-                <button
-                  key={p.name}
-                  onClick={() => handleLabelChange(p.name, priorityLabels)}
-                  disabled={isCurrent || operating}
-                  className={`text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors ${
-                    isCurrent
-                      ? 'border-blue-300 bg-blue-50 text-blue-600'
-                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                  } disabled:opacity-50`}
-                >
-                  {p.name}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
         {/* アクション */}
         <div className="px-5 py-4 flex gap-2">
+          <button
+            onClick={handleSaveChanges}
+            disabled={operating || !hasChanges}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2.5 rounded-lg font-medium disabled:opacity-50 transition-colors"
+          >
+            更新する
+          </button>
           <button
             onClick={handleClose}
             disabled={operating}

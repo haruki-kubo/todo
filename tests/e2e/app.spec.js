@@ -242,6 +242,7 @@ test.describe('Tasgy E2E', () => {
       createdCommentId = comments.find((comment) => comment.body === commentBody)?.id ?? null
 
       await detail.getByRole('button', { name: '処理済み' }).click()
+      await detail.getByRole('button', { name: '更新する' }).click()
 
       await expect
         .poll(async () => {
@@ -275,6 +276,7 @@ test.describe('Tasgy E2E', () => {
       await expect(detail).toContainText(seededIssues.overdue)
 
       await detail.getByRole('button', { name: '🔵 次週以降' }).click()
+      await detail.getByRole('button', { name: '更新する' }).click()
 
       await expect
         .poll(async () => {

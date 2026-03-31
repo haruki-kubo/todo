@@ -30,6 +30,7 @@
 | 2026-03-29 | 3.5 | `verifyToken` を 3 段階検証に強化（書き込み権限チェック追加）。`fetchCollaborators` の戻り値を `{ data, error }` に変更し、UI にエラー表示を追加。仕様書の `verifyToken` シグネチャを更新 |
 | 2026-03-31 | 3.7 | IssueDetailPanel にカテゴリ変更（ドロップダウン + `setLabels` API）と期限変更（date 入力 + `updateIssueBody` で本文の期限行を自動更新/挿入/削除）を追加 |
 | 2026-03-31 | 3.8 | `parseStartDate` / `insertStartDateToBody` を deadline.js に追加。GanttChart の items に `startDate` を追加しバー開始位置を開始日ベースに変更。IssueDetailPanel に開始日入力を追加。NewTaskModal に開始日フィールドを追加 |
+| 2026-03-31 | 3.9 | IssueDetailPanel の編集項目をドラフト state 化。`更新する` ボタンでラベル・本文・担当者・マイルストーンをまとめて保存する `handleSaveChanges` を追加 |
 
 ---
 
@@ -751,12 +752,24 @@ Issue のラベルからマッチするラベル定義オブジェクトを返�
 - `fetchedRef` で重複取得を防止
 - 取得中は `null`、取得後は `Comment[]`
 
-**ラベル変更処理**（`handleLabelChange`）:
-1. 現在の Issue のラベル一覧を取得
-2. 変更対象グループのラベルを除去
-3. 新しいラベルを追加
-4. `setLabels()` API で更新
-5. `onUpdate()` で親に再取得を通知
+**編集 state**:
+- `draftStatus` / `draftPriority` / `draftCategory`
+- `draftAssignee` / `draftMilestone`
+- `draftStartDate` / `draftDeadline`
+- `issue` 変更時に `useEffect` で再初期化
+- `hasChanges` で差分有無を判定し、`更新する` ボタン活性制御に使用
+
+**保存処理**（`handleSaveChanges`）:
+1. ドラフト値と現在の Issue を比較して差分を判定
+2. ラベル系は現在ラベルから status / priority / category を置き換え
+3. 日付系は `buildBodyWithDates()` で本文中の `📅 開始日` / `📅 期限` 行を更新
+4. 変更がある API のみ順に呼び出し
+   - `setLabels()`
+   - `updateIssueBody()`
+   - `setAssignees()`
+   - `setMilestone()`
+5. 返却された最新 Issue で `onSelectIssue()` を更新
+6. `onUpdate({ issueNumber, isSynced })` で親に再取得を通知
 
 **Issue クローズ処理**:
 1. `confirm()` で確認
