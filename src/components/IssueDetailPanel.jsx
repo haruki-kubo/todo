@@ -38,8 +38,9 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
       const withoutGroup = currentLabels.filter(
         (name) => !labelGroup.some((l) => l.name === name)
       )
-      await setLabels(issue.number, [...withoutGroup, newLabelName])
-      onUpdate()
+      const updatedLabels = await setLabels(issue.number, [...withoutGroup, newLabelName])
+      onSelectIssue?.({ ...issue, labels: updatedLabels })
+      await onUpdate()
     } catch (e) {
       alert('ラベル変更に失敗しました: ' + e.message)
     } finally {
@@ -52,7 +53,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
     setOperating(true)
     try {
       await closeIssue(issue.number)
-      onUpdate()
+      await onUpdate()
       onClose()
     } catch (e) {
       alert('完了処理に失敗しました: ' + e.message)
@@ -96,8 +97,9 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
               onChange={async (e) => {
                 setOperating(true)
                 try {
-                  await setAssignees(issue.number, e.target.value ? [e.target.value] : [])
-                  onUpdate()
+                  const updatedIssue = await setAssignees(issue.number, e.target.value ? [e.target.value] : [])
+                  onSelectIssue?.(updatedIssue)
+                  await onUpdate()
                 } catch (err) {
                   alert('担当者変更に失敗しました: ' + err.message)
                 } finally {
@@ -157,8 +159,9 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
                     (name) => !categoryLabels.some((c) => c.name === name)
                   )
                   const newLabels = e.target.value ? [...withoutCategory, e.target.value] : withoutCategory
-                  await setLabels(issue.number, newLabels)
-                  onUpdate()
+                  const updatedLabels = await setLabels(issue.number, newLabels)
+                  onSelectIssue?.({ ...issue, labels: updatedLabels })
+                  await onUpdate()
                 } catch (err) {
                   alert('カテゴリ変更に失敗しました: ' + err.message)
                 } finally {
@@ -195,8 +198,9 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
                   } else {
                     newBody = currentBody.replace(/📅\s*開始日[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*\n*/g, '').trim()
                   }
-                  await updateIssueBody(issue.number, newBody)
-                  onUpdate()
+                  const updatedIssue = await updateIssueBody(issue.number, newBody)
+                  onSelectIssue?.(updatedIssue)
+                  await onUpdate()
                 } catch (err) {
                   alert('開始日変更に失敗しました: ' + err.message)
                 } finally {
@@ -230,8 +234,9 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
                       // 期限を削除
                       newBody = currentBody.replace(/📅\s*期限[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*\n*/g, '').trim()
                     }
-                    await updateIssueBody(issue.number, newBody)
-                    onUpdate()
+                    const updatedIssue = await updateIssueBody(issue.number, newBody)
+                    onSelectIssue?.(updatedIssue)
+                    await onUpdate()
                   } catch (err) {
                     alert('期限変更に失敗しました: ' + err.message)
                   } finally {
@@ -264,8 +269,9 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
               onChange={async (e) => {
                 setOperating(true)
                 try {
-                  await setMilestone(issue.number, e.target.value ? parseInt(e.target.value, 10) : null)
-                  onUpdate()
+                  const updatedIssue = await setMilestone(issue.number, e.target.value ? parseInt(e.target.value, 10) : null)
+                  onSelectIssue?.(updatedIssue)
+                  await onUpdate()
                 } catch (err) {
                   alert('マイルストーン変更に失敗しました: ' + err.message)
                 } finally {
