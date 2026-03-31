@@ -51,8 +51,21 @@ function App() {
 
         if (!syncOptions) break
 
-        const targetIssue = allIssuesData.find((i) => i.number === syncOptions.issueNumber)
-        if (targetIssue && syncOptions.isSynced(targetIssue)) {
+        const issueSynced = syncOptions.issueNumber
+          ? (() => {
+              const targetIssue = allIssuesData.find((i) => i.number === syncOptions.issueNumber)
+              return targetIssue && syncOptions.isSynced?.(targetIssue)
+            })()
+          : false
+
+        const milestoneSynced = syncOptions.milestoneNumber
+          ? (() => {
+              const targetMilestone = milestonesData.find((m) => m.number === syncOptions.milestoneNumber)
+              return targetMilestone && syncOptions.isMilestoneSynced?.(targetMilestone)
+            })()
+          : false
+
+        if (issueSynced || milestoneSynced) {
           break
         }
 
@@ -74,6 +87,7 @@ function App() {
         if (!fetchedIssue) return null
         if (
           syncOptions &&
+          syncOptions.issueNumber &&
           prev.number === syncOptions.issueNumber &&
           !syncOptions.isSynced(fetchedIssue)
         ) {
@@ -196,7 +210,7 @@ function App() {
           </div>
         )
       case 'burndown':
-        return <BurndownChart />
+        return <BurndownChart milestones={milestones} />
       case 'settings':
         return <SettingsView onDataChanged={loadData} />
       case 'board':

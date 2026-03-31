@@ -12,6 +12,7 @@ async function request(path, options = {}) {
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
+    cache: 'no-store',
     headers: {
       Authorization: `token ${token}`,
       Accept: 'application/vnd.github.v3+json',

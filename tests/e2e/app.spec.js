@@ -99,10 +99,41 @@ async function getIssue(issueNumber) {
   return githubRequest(`/repos/${repoOwner}/${repoName}/issues/${issueNumber}`)
 }
 
+async function createIssue(body) {
+  return githubRequest(`/repos/${repoOwner}/${repoName}/issues`, {
+    method: 'POST',
+    body,
+  })
+}
+
 async function setIssueLabels(issueNumber, labels) {
   return githubRequest(`/repos/${repoOwner}/${repoName}/issues/${issueNumber}/labels`, {
     method: 'PUT',
     body: { labels },
+  })
+}
+
+async function listMilestones() {
+  return githubRequest(`/repos/${repoOwner}/${repoName}/milestones?state=all&per_page=100`)
+}
+
+async function createMilestone(body) {
+  return githubRequest(`/repos/${repoOwner}/${repoName}/milestones`, {
+    method: 'POST',
+    body,
+  })
+}
+
+async function updateMilestone(milestoneNumber, body) {
+  return githubRequest(`/repos/${repoOwner}/${repoName}/milestones/${milestoneNumber}`, {
+    method: 'PATCH',
+    body,
+  })
+}
+
+async function deleteMilestone(milestoneNumber) {
+  return githubRequest(`/repos/${repoOwner}/${repoName}/milestones/${milestoneNumber}`, {
+    method: 'DELETE',
   })
 }
 
@@ -345,6 +376,79 @@ test.describe('Tasgy E2E', () => {
         method: 'PATCH',
         body: { state: 'open' },
       })
+    }
+  })
+
+  test('updates a milestone due date in settings and reflects it in burndown', async ({ page }) => {
+    const suffix = Date.now()
+    const milestoneTitle = `[E2E] Milestone ${suffix}`
+    const issueTitle = `[E2E] Milestone Issue ${suffix}`
+    let milestone = null
+    let createdIssue = null
+
+    try {
+      milestone = await createMilestone({
+        title: milestoneTitle,
+        description: '開始日: 2026-03-21',
+        due_on: '2026-04-03T00:00:00Z',
+      })
+
+      createdIssue = await createIssue({
+        title: issueTitle,
+        body: 'バーンダウン設定反映確認用',
+      })
+
+      await githubRequest(`/repos/${repoOwner}/${repoName}/issues/${createdIssue.number}`, {
+        method: 'PATCH',
+        body: { milestone: milestone.number },
+      })
+
+      await expect
+        .poll(async () => {
+          const issue = await getIssue(createdIssue.number)
+          return issue.milestone?.number ?? null
+        })
+        .toBe(milestone.number)
+
+      await page.getByRole('button', { name: '⚙ 設定' }).click()
+      await page.getByRole('button', { name: 'マイルストーン' }).click()
+      await expect(page.getByText(milestoneTitle)).toBeVisible()
+
+      const milestoneRow = page
+        .getByText(milestoneTitle)
+        .locator('xpath=ancestor::div[contains(@class,"flex items-center gap-3 py-3")]')
+      await milestoneRow.getByRole('button', { name: '編集' }).click()
+
+      const dueInput = page.locator('input[type="date"]').first()
+      await dueInput.fill('2026-04-10')
+      await page.getByRole('button', { name: '更新', exact: true }).click()
+
+      await expect(page.getByText('期限: 2026/4/10')).toBeVisible()
+
+      await expect
+        .poll(async () => {
+          const milestoneList = await listMilestones()
+          return milestoneList.find((item) => item.number === milestone.number)?.due_on ?? null
+        })
+        .toContain('2026-04-10')
+
+      await page.getByRole('button', { name: '📉 バーンダウン' }).click()
+      await page.getByRole('combobox').selectOption(String(milestone.number))
+
+      await expect(page.getByText(`${milestoneTitle} - バーンダウンチャート`)).toBeVisible()
+      await expect(page.getByText('期限: 2026/4/10')).toBeVisible()
+    } finally {
+      if (createdIssue) {
+        await githubRequest(`/repos/${repoOwner}/${repoName}/issues/${createdIssue.number}`, {
+          method: 'PATCH',
+          body: { state: 'closed' },
+        }).catch(() => {})
+      }
+
+      if (milestone) {
+        await updateMilestone(milestone.number, { due_on: '2026-04-03T00:00:00Z' }).catch(() => {})
+        await deleteMilestone(milestone.number).catch(() => {})
+      }
     }
   })
 })

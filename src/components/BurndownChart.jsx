@@ -18,11 +18,19 @@ function parseMilestoneStartDate(description) {
   return parsed
 }
 
-function BurndownChart() {
-  const [milestones, setMilestones] = useState([])
+function pickInitialMilestone(data) {
+  const withDue = data.filter((m) => m.due_on)
+  if (withDue.length > 0) {
+    return [...withDue].sort((a, b) => new Date(b.due_on) - new Date(a.due_on))[0]
+  }
+  return data[0] || null
+}
+
+function BurndownChart({ milestones: providedMilestones = null }) {
+  const [milestones, setMilestones] = useState(providedMilestones || [])
   const [selectedMilestone, setSelectedMilestone] = useState(null)
   const [milestoneIssues, setMilestoneIssues] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(providedMilestones ? false : true)
   const [loadingIssues, setLoadingIssues] = useState(false)
 
   const loadMilestoneIssues = useCallback(async (milestone) => {
@@ -38,30 +46,48 @@ function BurndownChart() {
     }
   }, [])
 
-  // マイルストーン一覧を初回取得
+  // App から受け取った最新 milestones に同期
+  useEffect(() => {
+    if (!providedMilestones) return
+
+    setMilestones(providedMilestones)
+    setSelectedMilestone((prev) => {
+      if (providedMilestones.length === 0) return null
+      if (!prev) return pickInitialMilestone(providedMilestones)
+      return providedMilestones.find((m) => m.number === prev.number) || pickInitialMilestone(providedMilestones)
+    })
+    setLoading(false)
+  }, [providedMilestones])
+
+  // マイルストーン一覧を最新化
   useEffect(() => {
     let cancelled = false
+    if (!providedMilestones) {
+      setLoading(true)
+    }
     fetchMilestones()
       .then((data) => {
         if (cancelled) return
         setMilestones(data)
-        const withDue = data.filter((m) => m.due_on)
-        let initial = null
-        if (withDue.length > 0) {
-          withDue.sort((a, b) => new Date(b.due_on) - new Date(a.due_on))
-          initial = withDue[0]
-        } else if (data.length > 0) {
-          initial = data[0]
-        }
-        if (initial) {
-          setSelectedMilestone(initial)
-          loadMilestoneIssues(initial)
-        }
+        const initial = pickInitialMilestone(data)
+        setSelectedMilestone((prev) => {
+          if (!initial) return null
+          if (!prev) return initial
+          return data.find((m) => m.number === prev.number) || initial
+        })
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [loadMilestoneIssues])
+  }, [providedMilestones])
+
+  useEffect(() => {
+    if (!selectedMilestone) {
+      setMilestoneIssues([])
+      return
+    }
+    loadMilestoneIssues(selectedMilestone)
+  }, [selectedMilestone, loadMilestoneIssues])
 
   // バーンダウンデータを計算
   const chartData = useMemo(() => {

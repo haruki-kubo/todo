@@ -79,4 +79,63 @@ describe('BurndownChart', () => {
     expect(screen.getByText('3/24')).toBeInTheDocument()
     expect(screen.queryByText('3/21')).not.toBeInTheDocument()
   })
+
+  test('updates the due date display when milestone props are refreshed', async () => {
+    apiMocks.fetchMilestones
+      .mockResolvedValueOnce([
+        {
+          number: 3,
+          title: 'Prop Milestone',
+          due_on: '2026-04-03T00:00:00Z',
+          description: '',
+          state: 'open',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          number: 3,
+          title: 'Prop Milestone',
+          due_on: '2026-04-10T00:00:00Z',
+          description: '',
+          state: 'open',
+        },
+      ])
+    apiMocks.fetchMilestoneIssues.mockResolvedValue([
+      { id: 20, state: 'open', created_at: '2026-03-24T10:00:00Z', closed_at: null },
+    ])
+
+    const initialMilestones = [
+      {
+        number: 3,
+        title: 'Prop Milestone',
+        due_on: '2026-04-03T00:00:00Z',
+        description: '',
+        state: 'open',
+      },
+    ]
+
+    const { rerender } = render(<BurndownChart milestones={initialMilestones} />)
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('期限: 2026/4/3')).toBeInTheDocument()
+
+    const updatedMilestones = [
+      {
+        ...initialMilestones[0],
+        due_on: '2026-04-10T00:00:00Z',
+      },
+    ]
+
+    await act(async () => {
+      rerender(<BurndownChart milestones={updatedMilestones} />)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('期限: 2026/4/10')).toBeInTheDocument()
+  })
 })

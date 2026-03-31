@@ -187,7 +187,7 @@ function SettingsView({ onDataChanged }) {
         await createLabel(name, color, description)
       }
       await loadData()
-      onDataChanged?.()
+      await onDataChanged?.()
       setEditingItem(null)
       setShowNewForm(false)
     } catch (e) {
@@ -203,7 +203,7 @@ function SettingsView({ onDataChanged }) {
     try {
       await deleteLabel(name)
       await loadData()
-      onDataChanged?.()
+      await onDataChanged?.()
     } catch (e) {
       alert('削除に失敗しました: ' + e.message)
     } finally {
@@ -214,13 +214,26 @@ function SettingsView({ onDataChanged }) {
   const handleSaveMilestone = async (title, description, dueOn) => {
     setSaving(true)
     try {
+      let milestoneNumber = editingItem?.number ?? null
       if (editingItem) {
         await updateMilestone(editingItem.number, title, description, dueOn, editingItem.state)
       } else {
-        await createMilestone(title, description, dueOn)
+        const created = await createMilestone(title, description, dueOn)
+        milestoneNumber = created?.number ?? null
       }
       await loadData()
-      onDataChanged?.()
+      await onDataChanged?.(
+        milestoneNumber
+          ? {
+              milestoneNumber,
+              isMilestoneSynced: (milestone) => (
+                milestone.title === title &&
+                (milestone.description || '') === (description || '') &&
+                (milestone.due_on ? milestone.due_on.split('T')[0] : null) === (dueOn || null)
+              ),
+            }
+          : null
+      )
       setEditingItem(null)
       setShowNewForm(false)
     } catch (e) {
@@ -236,7 +249,7 @@ function SettingsView({ onDataChanged }) {
     try {
       await deleteMilestone(number)
       await loadData()
-      onDataChanged?.()
+      await onDataChanged?.()
     } catch (e) {
       alert('削除に失敗しました: ' + e.message)
     } finally {
@@ -250,7 +263,7 @@ function SettingsView({ onDataChanged }) {
       const newState = milestone.state === 'open' ? 'closed' : 'open'
       await updateMilestone(milestone.number, milestone.title, milestone.description, milestone.due_on?.split('T')[0], newState)
       await loadData()
-      onDataChanged?.()
+      await onDataChanged?.()
     } catch (e) {
       alert('更新に失敗しました: ' + e.message)
     } finally {
