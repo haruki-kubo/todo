@@ -68,7 +68,7 @@ describe('SettingsView', () => {
 
     render(<SettingsView onDataChanged={onDataChanged} />)
 
-    await screen.findByText('ステータスラベル')
+    await screen.findByRole('heading', { name: 'ステータス' })
     await user.click(screen.getByRole('button', { name: '+ 新規作成' }))
     await user.type(screen.getByPlaceholderText('ラベル名'), '処理中')
     await user.type(screen.getByPlaceholderText('順序'), '2')
@@ -85,9 +85,9 @@ describe('SettingsView', () => {
 
     render(<SettingsView onDataChanged={() => {}} />)
 
-    await screen.findByText('ステータスラベル')
+    await screen.findByRole('heading', { name: 'ステータス' })
     await user.click(screen.getByRole('button', { name: 'カテゴリ' }))
-    await screen.findByText('カテゴリラベル')
+    await screen.findByRole('heading', { name: 'カテゴリ' })
 
     expect(screen.queryByPlaceholderText('順序')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '+ 新規作成' }))
@@ -106,7 +106,7 @@ describe('SettingsView', () => {
 
     render(<SettingsView onDataChanged={onDataChanged} />)
 
-    await screen.findByText('ステータスラベル')
+    await screen.findByRole('heading', { name: 'ステータス' })
     await user.click(screen.getByRole('button', { name: 'マイルストーン' }))
     await screen.findByText('Sprint A')
     await user.click(screen.getByRole('button', { name: '編集' }))
@@ -127,7 +127,7 @@ describe('SettingsView', () => {
 
     render(<SettingsView onDataChanged={() => {}} />)
 
-    await screen.findByText('ステータスラベル')
+    await screen.findByRole('heading', { name: 'ステータス' })
     await user.click(screen.getByRole('button', { name: 'マイルストーン' }))
     await screen.findByText('Sprint A')
     await user.click(screen.getByRole('button', { name: 'Close' }))

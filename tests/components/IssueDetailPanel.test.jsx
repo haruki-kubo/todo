@@ -154,7 +154,7 @@ describe('IssueDetailPanel', () => {
     await user.click(screen.getByRole('button', { name: '処理中' }))
     expect(githubApiMocks.setLabels).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: '更新する' }))
+    await user.click(screen.getByRole('button', { name: '更新' }))
 
     await waitFor(() => {
       expect(githubApiMocks.setLabels).toHaveBeenCalledWith(101, ['分類対象外', '処理中', '🔴 緊急', '🏢 経理総務'])

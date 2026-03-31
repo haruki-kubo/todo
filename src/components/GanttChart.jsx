@@ -2,23 +2,25 @@ import { useMemo, useState } from 'react'
 import { getPriorityLabel, getStatusLabel, getCategoryLabel } from '../utils/labels'
 import { parseDeadline, parseStartDate, getDeadlineInfo } from '../utils/deadline'
 import { getSubtaskProgress } from '../utils/hierarchy'
+import { useTranslation } from '../i18n'
 
 const SCALES = [
-  { key: 'day', name: '日', unitDays: 1, colWidth: 40 },
-  { key: 'week', name: '週', unitDays: 7, colWidth: 50 },
-  { key: 'month', name: '月', unitDays: 30, colWidth: 60 },
-  { key: 'quarter', name: '四半期', unitDays: 91, colWidth: 80 },
+  { key: 'day', tKey: 'gantt.scaleDay', unitDays: 1, colWidth: 40 },
+  { key: 'week', tKey: 'gantt.scaleWeek', unitDays: 7, colWidth: 50 },
+  { key: 'month', tKey: 'gantt.scaleMonth', unitDays: 30, colWidth: 60 },
+  { key: 'quarter', tKey: 'gantt.scaleQuarter', unitDays: 91, colWidth: 80 },
 ]
 
 const GROUP_OPTIONS = [
-  { key: 'none', name: 'なし' },
-  { key: 'parent', name: '親課題' },
-  { key: 'assignee', name: '担当者' },
-  { key: 'priority', name: '優先度' },
-  { key: 'category', name: 'カテゴリ' },
+  { key: 'none', tKey: 'gantt.groupNone' },
+  { key: 'parent', tKey: 'gantt.groupParent' },
+  { key: 'assignee', tKey: 'gantt.groupAssignee' },
+  { key: 'priority', tKey: 'gantt.groupPriority' },
+  { key: 'category', tKey: 'gantt.groupCategory' },
 ]
 
 function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabels, statusLabels, onSelectIssue, selectedIssueId }) {
+  const { t, lang } = useTranslation()
   const [scaleKey, setScaleKey] = useState('day')
   const [groupByKey, setGroupByKey] = useState('none')
   const [collapsedParents, setCollapsedParents] = useState(new Set())
@@ -92,14 +94,14 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
           if (hierarchy.childrenMap.has(issue.number)) {
             return `#${issue.number} ${issue.title}`
           }
-          return '独立課題'
+          return t('gantt.independentIssues')
         }
         case 'assignee':
-          return issue.assignee?.login || '未設定'
+          return issue.assignee?.login || t('common.unset')
         case 'priority':
-          return getPriorityLabel(issue, priorityLabels)?.name || '未設定'
+          return getPriorityLabel(issue, priorityLabels)?.name || t('common.unset')
         case 'category':
-          return getCategoryLabel(issue, categoryLabels)?.name || '未設定'
+          return getCategoryLabel(issue, categoryLabels)?.name || t('common.unset')
         default:
           return null
       }
@@ -142,7 +144,7 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
       groupName,
       treeItems: groupItems.map((it) => ({ ...it, depth: 0, isParent: false })),
     }))
-  }, [items, allIssues, hierarchy, groupByKey, priorityLabels, categoryLabels])
+  }, [items, allIssues, hierarchy, groupByKey, priorityLabels, categoryLabels, t])
 
   // スケール用のヘッダーカラム生成
   const { columns, topHeaders, totalColumns, colWidth } = useMemo(() => {
@@ -278,7 +280,7 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
   if (items.length === 0) {
     return (
       <div className="text-center py-16 text-gray-400">
-        表示するタスクがありません
+        {t('gantt.noTasks')}
       </div>
     )
   }
@@ -440,7 +442,7 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
                 backgroundColor: barColor,
                 opacity: deadline ? 0.85 : 0.5,
               }}
-              title={`${issue.title}${deadline ? `\n期限: ${deadline.toLocaleDateString('ja-JP')}` : '\n期限未設定'}`}
+              title={`${issue.title}${deadline ? `\n${t('detail.deadline')}: ${deadline.toLocaleDateString(lang === 'en' ? 'en-US' : 'ja-JP')}` : `\n${t('gantt.noDeadline')}`}`}
             >
               {barWidth > 80 && (
                 <span className="text-[10px] text-white truncate font-medium">
@@ -459,7 +461,7 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
       {/* ツールバー */}
       <div className="flex items-center gap-4 px-4 py-2 bg-white border-b border-gray-200 flex-wrap">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">スケール:</span>
+          <span className="text-xs text-gray-500">{t('gantt.scaleLabel')}</span>
           {SCALES.map((s) => (
             <button
               key={s.key}
@@ -470,19 +472,19 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {s.name}
+              {t(s.tKey)}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">グルーピング:</span>
+          <span className="text-xs text-gray-500">{t('gantt.groupLabel')}</span>
           <select
             value={groupByKey}
             onChange={(e) => setGroupByKey(e.target.value)}
             className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700"
           >
             {GROUP_OPTIONS.map((g) => (
-              <option key={g.key} value={g.key}>{g.name}</option>
+              <option key={g.key} value={g.key}>{t(g.tKey)}</option>
             ))}
           </select>
         </div>
@@ -500,7 +502,7 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
               className="sticky left-0 z-20 bg-gray-50 border-r border-gray-200 flex items-end px-3 pb-2 text-xs font-medium text-gray-500"
               style={{ width: labelWidth, minWidth: labelWidth }}
             >
-              タスク名
+              {t('gantt.taskName')}
             </div>
             <div className="relative" style={{ width: chartWidth }}>
               {/* 上段ヘッダー */}

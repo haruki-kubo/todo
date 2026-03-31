@@ -21,6 +21,7 @@ const seededIssueMap = new Map()
 async function loginToApp(page) {
   await page.addInitScript((storedToken) => {
     window.sessionStorage.setItem('github_token', storedToken)
+    window.localStorage.setItem('issueboard_lang', 'ja')
   }, token)
 
   await page.goto('/')
@@ -273,7 +274,7 @@ test.describe('Tasgy E2E', () => {
       createdCommentId = comments.find((comment) => comment.body === commentBody)?.id ?? null
 
       await detail.getByRole('button', { name: '処理済み' }).click()
-      await detail.getByRole('button', { name: '更新する' }).click()
+      await detail.getByRole('button', { name: '更新' }).click()
 
       await expect
         .poll(async () => {
@@ -307,7 +308,7 @@ test.describe('Tasgy E2E', () => {
       await expect(detail).toContainText(seededIssues.overdue)
 
       await detail.getByRole('button', { name: '🔵 次週以降' }).click()
-      await detail.getByRole('button', { name: '更新する' }).click()
+      await detail.getByRole('button', { name: '更新' }).click()
 
       await expect
         .poll(async () => {
@@ -433,7 +434,7 @@ test.describe('Tasgy E2E', () => {
         .toContain('2026-04-10')
 
       await page.getByRole('button', { name: '📉 バーンダウン' }).click()
-      await page.getByRole('combobox').selectOption(String(milestone.number))
+      await page.getByRole('combobox').nth(1).selectOption(String(milestone.number))
 
       await expect(page.getByText(`${milestoneTitle} - バーンダウンチャート`)).toBeVisible()
       await expect(page.getByText('期限: 2026/4/10')).toBeVisible()

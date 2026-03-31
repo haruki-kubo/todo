@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { addComment } from '../api/github'
+import { useTranslation } from '../i18n'
 
 function CommentForm({ issueNumber, onCommentAdded }) {
+  const { t } = useTranslation()
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
 
@@ -16,7 +18,7 @@ function CommentForm({ issueNumber, onCommentAdded }) {
       onCommentAdded(newComment)
       setText('')
     } catch (e) {
-      alert('コメント送信に失敗しました: ' + e.message)
+      alert(t('error.commentSend') + e.message)
     } finally {
       setSending(false)
     }
@@ -27,7 +29,7 @@ function CommentForm({ issueNumber, onCommentAdded }) {
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="メモを追加..."
+        placeholder={t('detail.commentPlaceholder')}
         rows={2}
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
       />
@@ -36,7 +38,7 @@ function CommentForm({ issueNumber, onCommentAdded }) {
         disabled={sending || !text.trim()}
         className="mt-1 w-full bg-blue-500 text-white text-xs py-2 rounded-lg font-medium disabled:opacity-40 active:bg-blue-600"
       >
-        {sending ? '送信中...' : '送信'}
+        {sending ? t('common.sending') : t('detail.send')}
       </button>
     </form>
   )

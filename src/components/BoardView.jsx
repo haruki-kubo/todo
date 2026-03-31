@@ -2,8 +2,10 @@ import { useState, useRef, useMemo, useCallback } from 'react'
 import { getPriorityKey, getStatusKey } from '../utils/labels'
 import { setLabels } from '../api/github'
 import TaskCard from './TaskCard'
+import { useTranslation } from '../i18n'
 
-const UNSET_COLUMN = { key: '__unset__', name: '未設定', color: '#9ca3af' }
+const UNSET_COLUMN_KEY = '__unset__'
+const UNSET_COLUMN_COLOR = '#9ca3af'
 
 const STORAGE_KEY_STATUS = 'issueboard_status_order'
 const STORAGE_KEY_PRIORITY = 'issueboard_priority_order'
@@ -32,6 +34,9 @@ function applyCustomOrder(labels, savedOrder) {
 }
 
 function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIssue, selectedIssueId }) {
+  const { t } = useTranslation()
+  const UNSET_COLUMN = { key: UNSET_COLUMN_KEY, name: t('common.unset'), color: UNSET_COLUMN_COLOR }
+
   const [groupBy, setGroupBy] = useState('status')
   const [filterAssignee, setFilterAssignee] = useState('all')
   const [draggingIssue, setDraggingIssue] = useState(null)
@@ -126,7 +131,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
     dragCounterRef.current = {}
 
     if (!draggingIssue || updating) return
-    if (targetColumn.key === UNSET_COLUMN.key) {
+    if (targetColumn.key === UNSET_COLUMN_KEY) {
       setDraggingIssue(null)
       return
     }
@@ -146,7 +151,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
       await setLabels(draggingIssue.number, [...withoutGroup, targetColumn.name])
       onUpdate()
     } catch (err) {
-      alert('ラベル変更に失敗しました: ' + err.message)
+      alert(t('error.labelChange') + err.message)
     } finally {
       setUpdating(false)
       setDraggingIssue(null)
@@ -155,7 +160,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
 
   // --- 列ヘッダー D&D ---
   const handleHeaderDragStart = useCallback((e, columnKey) => {
-    if (columnKey === UNSET_COLUMN.key) return
+    if (columnKey === UNSET_COLUMN_KEY) return
     setDraggingColumnKey(columnKey)
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', columnKey)
@@ -173,7 +178,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
 
   const handleHeaderDragEnter = useCallback((e, columnKey) => {
     e.preventDefault()
-    if (columnKey !== UNSET_COLUMN.key) {
+    if (columnKey !== UNSET_COLUMN_KEY) {
       setDragOverHeaderKey(columnKey)
     }
   }, [])
@@ -182,7 +187,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
     e.preventDefault()
     setDragOverHeaderKey(null)
 
-    if (!draggingColumnKey || targetKey === UNSET_COLUMN.key || draggingColumnKey === targetKey) {
+    if (!draggingColumnKey || targetKey === UNSET_COLUMN_KEY || draggingColumnKey === targetKey) {
       setDraggingColumnKey(null)
       return
     }
@@ -216,7 +221,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
       <div className="flex items-center gap-4 px-4 py-2 bg-white border-b border-gray-200 flex-wrap">
         {statusLabels.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">表示:</span>
+            <span className="text-xs text-gray-500">{t('board.viewLabel')}</span>
             <button
               onClick={() => setGroupBy('status')}
               className={`text-xs px-3 py-1 rounded-lg transition-colors ${
@@ -225,7 +230,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              ステータス別
+              {t('board.statusView')}
             </button>
             <button
               onClick={() => setGroupBy('priority')}
@@ -235,19 +240,19 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              優先度別
+              {t('board.priorityView')}
             </button>
           </div>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">担当者:</span>
+          <span className="text-xs text-gray-500">{t('board.assigneeLabel')}</span>
           <select
             value={filterAssignee}
             onChange={(e) => setFilterAssignee(e.target.value)}
             className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700"
           >
-            <option value="all">全員</option>
-            <option value="__unassigned__">未設定</option>
+            <option value="all">{t('board.assigneeAll')}</option>
+            <option value="__unassigned__">{t('common.unset')}</option>
             {assignees.map((a) => (
               <option key={a.login} value={a.login}>{a.login}</option>
             ))}
@@ -257,7 +262,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
 
       <div className="flex gap-4 px-4 py-4 overflow-x-auto flex-1">
         {columns.map((column) => {
-          const isUnset = column.key === UNSET_COLUMN.key
+          const isUnset = column.key === UNSET_COLUMN_KEY
           const isCardOver = dragOverColumn === column.key && draggingIssue && !isUnset && getKey(draggingIssue) !== column.key
           const isHeaderOver = dragOverHeaderKey === column.key && draggingColumnKey && !isUnset
           return (
@@ -309,7 +314,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
               <div className="flex-1 p-3 space-y-2 overflow-y-auto min-h-[100px]">
                 {column.issues.length === 0 ? (
                   <p className="text-center text-gray-400 text-xs py-8">
-                    {isCardOver ? 'ここにドロップ' : 'タスクなし'}
+                    {isCardOver ? t('board.dropHere') : t('board.noTasks')}
                   </p>
                 ) : (
                   column.issues.map((issue) => (
@@ -338,7 +343,7 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
 
       {updating && (
         <div className="fixed bottom-4 right-4 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg shadow-lg">
-          更新中...
+          {t('board.updating')}
         </div>
       )}
     </div>

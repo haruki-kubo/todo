@@ -6,11 +6,13 @@ import { getCategoryLabel, getPriorityLabel, getStatusLabel } from '../utils/lab
 import { parseDeadline, parseStartDate, getDeadlineInfo } from '../utils/deadline'
 import { parseChildNumbers, getSubtaskProgress, parseRelatedNumbers } from '../utils/hierarchy'
 import CommentForm from './CommentForm'
+import { useTranslation } from '../i18n'
 
 const REPO_OWNER = import.meta.env.VITE_REPO_OWNER || ''
 const REPO_NAME = import.meta.env.VITE_REPO_NAME || ''
 
 function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborators, collaboratorsError, priorityLabels, categoryLabels, statusLabels, onClose, onUpdate, onSelectIssue }) {
+  const { t, lang } = useTranslation()
   const [comments, setComments] = useState(null)
   const [operating, setOperating] = useState(false)
   const [draftAssignee, setDraftAssignee] = useState('')
@@ -134,22 +136,22 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
           )
         },
       })
-    } catch (e) {
-      alert('課題更新に失敗しました: ' + e.message)
+    } catch (err) {
+      alert(t('error.issueUpdate') + err.message)
     } finally {
       setOperating(false)
     }
   }
 
   const handleClose = async () => {
-    if (!confirm('この課題を完了にしますか？')) return
+    if (!confirm(t('detail.confirmClose'))) return
     setOperating(true)
     try {
       await closeIssue(issue.number)
       await onUpdate()
       onClose()
-    } catch (e) {
-      alert('完了処理に失敗しました: ' + e.message)
+    } catch (err) {
+      alert(t('error.issueClose') + err.message)
     } finally {
       setOperating(false)
     }
@@ -184,14 +186,14 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
         {/* 属性 */}
         <div className="px-5 py-4 border-b border-gray-100 space-y-3">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 w-16 shrink-0">担当者</span>
+            <span className="text-xs text-gray-400 w-16 shrink-0">{t('detail.assignee')}</span>
             <select
               value={draftAssignee}
               onChange={(e) => setDraftAssignee(e.target.value)}
               disabled={operating}
               className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
             >
-              <option value="">未設定</option>
+              <option value="">{t('common.unset')}</option>
               {collaborators.map((c) => (
                 <option key={c.login} value={c.login}>{c.login}</option>
               ))}
@@ -205,7 +207,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
           </div>
           {statusLabels.length > 0 && (
             <div className="flex items-start gap-3">
-              <span className="text-xs text-gray-400 w-16 shrink-0">状態</span>
+              <span className="text-xs text-gray-400 w-16 shrink-0">{t('detail.status')}</span>
               <div className="flex flex-wrap gap-1.5">
                 {statusLabels.map((s) => {
                   const isCurrent = draftStatus === s.name
@@ -228,7 +230,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
             </div>
           )}
           <div className="flex items-start gap-3">
-            <span className="text-xs text-gray-400 w-16 shrink-0">優先度</span>
+            <span className="text-xs text-gray-400 w-16 shrink-0">{t('detail.priority')}</span>
             <div className="flex flex-wrap gap-1.5">
               {priorityLabels.map((p) => {
                 const isCurrent = draftPriority === p.name
@@ -250,21 +252,21 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 w-16 shrink-0">カテゴリ</span>
+            <span className="text-xs text-gray-400 w-16 shrink-0">{t('detail.category')}</span>
             <select
               value={draftCategory}
               onChange={(e) => setDraftCategory(e.target.value)}
               disabled={operating}
               className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
             >
-              <option value="">未設定</option>
+              <option value="">{t('common.unset')}</option>
               {categoryLabels.map((c) => (
                 <option key={c.name} value={c.name}>{c.name}</option>
               ))}
             </select>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 w-16 shrink-0">開始日</span>
+            <span className="text-xs text-gray-400 w-16 shrink-0">{t('detail.startDate')}</span>
             <input
               type="date"
               value={draftStartDate}
@@ -274,7 +276,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
             />
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 w-16 shrink-0">期限</span>
+            <span className="text-xs text-gray-400 w-16 shrink-0">{t('detail.deadline')}</span>
             <div className="flex items-center gap-2">
               <input
                 type="date"
@@ -300,26 +302,26 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 w-16 shrink-0">MS</span>
+            <span className="text-xs text-gray-400 w-16 shrink-0">{t('detail.milestone')}</span>
             <select
               value={draftMilestone}
               onChange={(e) => setDraftMilestone(e.target.value)}
               disabled={operating}
               className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
             >
-              <option value="">未設定</option>
+              <option value="">{t('common.unset')}</option>
               {milestones.filter((m) => m.state === 'open').map((m) => (
                 <option key={m.number} value={m.number}>{m.title}</option>
               ))}
               {issue.milestone && !milestones.find((m) => m.state === 'open' && m.number === issue.milestone.number) && (
-                <option value={issue.milestone.number}>{issue.milestone.title} (Closed)</option>
+                <option value={issue.milestone.number}>{issue.milestone.title} (${t('detail.closed')})</option>
               )}
             </select>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 w-16 shrink-0">作成日</span>
+            <span className="text-xs text-gray-400 w-16 shrink-0">{t('detail.created')}</span>
             <span className="text-xs text-gray-600">
-              {new Date(issue.created_at).toLocaleDateString('ja-JP')}
+              {new Date(issue.created_at).toLocaleDateString(lang === 'en' ? 'en-US' : 'ja-JP')}
             </span>
           </div>
         </div>
@@ -330,7 +332,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
           if (relatedNums.length === 0) return null
           return (
             <div className="px-5 py-3 border-b border-gray-100">
-              <h4 className="text-xs font-medium text-gray-500 mb-1.5">関連課題</h4>
+              <h4 className="text-xs font-medium text-gray-500 mb-1.5">{t('detail.relatedIssues')}</h4>
               <div className="space-y-1">
                 {relatedNums.map((num) => {
                   const related = allIssues.find((i) => i.number === num)
@@ -342,7 +344,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
                           className={`text-xs hover:underline ${related.state === 'closed' ? 'text-gray-400 line-through' : 'text-blue-600 hover:text-blue-800'}`}
                         >
                           #{num} {related.title}
-                          {related.state === 'closed' && ' (Closed)'}
+                          {related.state === 'closed' && ` (${t('detail.closed')})`}
                         </button>
                       ) : (
                         <span className="text-xs text-gray-400">#{num}</span>
@@ -361,13 +363,13 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
           const parentIssue = allIssues.find((i) => i.number === parentNum)
           return parentIssue ? (
             <div className="px-5 py-3 border-b border-gray-100">
-              <h4 className="text-xs font-medium text-gray-500 mb-1.5">親課題</h4>
+              <h4 className="text-xs font-medium text-gray-500 mb-1.5">{t('detail.parentIssue')}</h4>
               <button
                 onClick={() => onSelectIssue(parentIssue)}
                 className={`text-xs hover:underline ${parentIssue.state === 'closed' ? 'text-gray-400 line-through' : 'text-blue-600 hover:text-blue-800'}`}
               >
                 #{parentIssue.number} {parentIssue.title}
-                {parentIssue.state === 'closed' && ' (Closed)'}
+                {parentIssue.state === 'closed' && ` (${t('detail.closed')})`}
               </button>
             </div>
           ) : null
@@ -386,7 +388,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
           return (
             <div className="px-5 py-3 border-b border-gray-100">
               <div className="flex items-center gap-2 mb-2">
-                <h4 className="text-xs font-medium text-gray-500">サブタスク</h4>
+                <h4 className="text-xs font-medium text-gray-500">{t('detail.subtasks')}</h4>
                 {progress && (
                   <span className="text-[10px] text-gray-400">
                     {progress.done}/{progress.total}
@@ -418,7 +420,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
                       </button>
                     ) : (
                       <span className="text-xs text-gray-400">
-                        #{child.number} (Closed または未取得)
+                        #{child.number} ({t('detail.closedOrNotFound')})
                       </span>
                     )}
                   </div>
@@ -431,7 +433,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
         {/* 本文 */}
         {issue.body && (
           <div className="px-5 py-4 border-b border-gray-100">
-            <h4 className="text-xs font-medium text-gray-500 mb-2">詳細</h4>
+            <h4 className="text-xs font-medium text-gray-500 mb-2">{t('detail.body')}</h4>
             <div className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none">
               <Markdown remarkPlugins={[remarkGfm]}>{issue.body}</Markdown>
             </div>
@@ -441,12 +443,12 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
         {/* コメント */}
         <div className="px-5 py-4 border-b border-gray-100">
           <h4 className="text-xs font-medium text-gray-500 mb-3">
-            コメント {comments ? `(${comments.length}件)` : ''}
+            {t('detail.comments')} {comments ? `(${comments.length}${t('common.items')})` : ''}
           </h4>
           {comments === null ? (
-            <p className="text-xs text-gray-400">読み込み中...</p>
+            <p className="text-xs text-gray-400">{t('common.loading')}</p>
           ) : comments.length === 0 ? (
-            <p className="text-xs text-gray-400">コメントなし</p>
+            <p className="text-xs text-gray-400">{t('detail.noComments')}</p>
           ) : (
             <div className="space-y-3">
               {comments.map((comment) => (
@@ -463,7 +465,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
                       {comment.user?.login || ''}
                     </span>
                     <span className="text-[10px] text-gray-400">
-                      {new Date(comment.created_at).toLocaleDateString('ja-JP', {
+                      {new Date(comment.created_at).toLocaleDateString(lang === 'en' ? 'en-US' : 'ja-JP', {
                         month: 'numeric',
                         day: 'numeric',
                         hour: '2-digit',
@@ -488,14 +490,14 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
             disabled={operating || !hasChanges}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2.5 rounded-lg font-medium disabled:opacity-50 transition-colors"
           >
-            更新する
+            {t('detail.update')}
           </button>
           <button
             onClick={handleClose}
             disabled={operating}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2.5 rounded-lg font-medium disabled:opacity-50 transition-colors"
           >
-            完了にする
+            {t('detail.complete')}
           </button>
           <a
             href={`https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/${issue.number}`}
@@ -503,7 +505,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
             rel="noopener noreferrer"
             className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs py-2.5 rounded-lg font-medium text-center transition-colors"
           >
-            GitHubで開く
+            {t('detail.openOnGithub')}
           </a>
         </div>
       </div>

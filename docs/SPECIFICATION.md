@@ -31,6 +31,7 @@
 | 2026-03-31 | 3.7 | IssueDetailPanel にカテゴリ変更（ドロップダウン + `setLabels` API）と期限変更（date 入力 + `updateIssueBody` で本文の期限行を自動更新/挿入/削除）を追加 |
 | 2026-03-31 | 3.8 | `parseStartDate` / `insertStartDateToBody` を deadline.js に追加。GanttChart の items に `startDate` を追加しバー開始位置を開始日ベースに変更。IssueDetailPanel に開始日入力を追加。NewTaskModal に開始日フィールドを追加 |
 | 2026-03-31 | 3.9 | IssueDetailPanel の編集項目をドラフト state 化。`更新する` ボタンでラベル・本文・担当者・マイルストーンをまとめて保存する `handleSaveChanges` を追加 |
+| 2026-03-31 | 4.0 | `I18nProvider` + `useTranslation` フックを新規作成。全コンポーネント（13 ファイル）の文字列を翻訳キーに置換。日本語（`ja.js`）・英語（`en.js`）翻訳ファイルを追加。ProjectHeader に言語切替ドロップダウンを追加。`localStorage` に選択言語を保存 |
 
 ---
 
@@ -89,6 +90,10 @@ src/
 ├── index.css                 # Tailwind CSS 設定 + テーマ変数
 ├── api/
 │   └── github.js             # GitHub REST API ラッパー（全 API 関数）
+├── i18n/
+│   ├── index.jsx             # I18nProvider + useTranslation フック
+│   ├── ja.js                 # 日本語翻訳（約 200 キー）
+│   └── en.js                 # 英語翻訳
 ├── utils/
 │   ├── labels.js             # ラベル分類・判定ユーティリティ
 │   ├── deadline.js           # 期限パース・表示ユーティリティ

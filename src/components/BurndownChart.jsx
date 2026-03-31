@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { fetchMilestones, fetchMilestoneIssues } from '../api/github'
+import { useTranslation } from '../i18n'
 
 const CHART_PADDING = { top: 30, right: 30, bottom: 50, left: 50 }
 const MILESTONE_START_DATE_PATTERN = /開始日[:：]\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})/
@@ -27,6 +28,7 @@ function pickInitialMilestone(data) {
 }
 
 function BurndownChart({ milestones: providedMilestones = null }) {
+  const { t, lang } = useTranslation()
   const [milestones, setMilestones] = useState(providedMilestones || [])
   const [selectedMilestone, setSelectedMilestone] = useState(null)
   const [milestoneIssues, setMilestoneIssues] = useState([])
@@ -168,14 +170,14 @@ function BurndownChart({ milestones: providedMilestones = null }) {
   }
 
   if (loading) {
-    return <div className="text-center py-16 text-gray-400">マイルストーンを読み込み中...</div>
+    return <div className="text-center py-16 text-gray-400">{t('burndown.loadingMilestones')}</div>
   }
 
   if (milestones.length === 0) {
     return (
       <div className="text-center py-16 text-gray-400">
-        <p>マイルストーンが設定されていません</p>
-        <p className="text-xs mt-2">GitHub リポジトリでマイルストーンを作成し、Issue を紐づけてください</p>
+        <p>{t('burndown.noMilestones')}</p>
+        <p className="text-xs mt-2">{t('burndown.noMilestonesHint')}</p>
       </div>
     )
   }
@@ -302,11 +304,11 @@ function BurndownChart({ milestones: providedMilestones = null }) {
         {/* 凡例 */}
         <g transform={`translate(${CHART_PADDING.left + 10}, ${CHART_PADDING.top + 10})`}>
           <line x1="0" y1="0" x2="20" y2="0" stroke="#9ca3af" strokeWidth="2" strokeDasharray="6 4" />
-          <text x="26" y="4" className="text-[10px] fill-gray-500">理想線</text>
+          <text x="26" y="4" className="text-[10px] fill-gray-500">{t('burndown.idealLine')}</text>
           <line x1="0" y1="16" x2="20" y2="16" stroke="#3b82f6" strokeWidth="2.5" />
-          <text x="26" y="20" className="text-[10px] fill-blue-600">実績線</text>
+          <text x="26" y="20" className="text-[10px] fill-blue-600">{t('burndown.actualLine')}</text>
           <line x1="0" y1="32" x2="20" y2="32" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" />
-          <text x="26" y="36" className="text-[10px] fill-red-500">今日</text>
+          <text x="26" y="36" className="text-[10px] fill-red-500">{t('burndown.todayLine')}</text>
         </g>
       </svg>
     )
@@ -317,7 +319,7 @@ function BurndownChart({ milestones: providedMilestones = null }) {
       {/* ツールバー */}
       <div className="flex items-center gap-4 px-4 py-2 bg-white border-b border-gray-200 flex-wrap">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">マイルストーン:</span>
+          <span className="text-xs text-gray-500">{t('burndown.milestoneLabel')}</span>
           <select
             value={selectedMilestone?.number || ''}
             onChange={handleMilestoneChange}
@@ -325,16 +327,16 @@ function BurndownChart({ milestones: providedMilestones = null }) {
           >
             {milestones.map((m) => (
               <option key={m.number} value={m.number}>
-                {m.title} {m.state === 'closed' ? '(Closed)' : ''}
+                {m.title} {m.state === 'closed' ? `(${t('detail.closed')})` : ''}
               </option>
             ))}
           </select>
         </div>
         {chartData && (
           <div className="flex items-center gap-4 text-xs text-gray-500">
-            <span>総課題数: <strong className="text-gray-700">{chartData.totalIssues}</strong></span>
-            <span>完了: <strong className="text-green-600">{chartData.closedCount}</strong></span>
-            <span>残: <strong className="text-blue-600">{chartData.openCount}</strong></span>
+            <span>{t('burndown.total')} <strong className="text-gray-700">{chartData.totalIssues}</strong></span>
+            <span>{t('burndown.done')} <strong className="text-green-600">{chartData.closedCount}</strong></span>
+            <span>{t('burndown.remaining')} <strong className="text-blue-600">{chartData.openCount}</strong></span>
           </div>
         )}
       </div>
@@ -342,56 +344,56 @@ function BurndownChart({ milestones: providedMilestones = null }) {
       {/* チャート */}
       <div className="flex-1 overflow-auto p-6">
         {loadingIssues ? (
-          <div className="text-center py-16 text-gray-400">課題を読み込み中...</div>
+          <div className="text-center py-16 text-gray-400">{t('burndown.loadingIssues')}</div>
         ) : chartData ? (
           <div className="max-w-4xl mx-auto space-y-4">
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-sm font-bold text-gray-700 mb-4">
-                {selectedMilestone?.title} - バーンダウンチャート
+                {selectedMilestone?.title} - {t('burndown.chartTitle')}
               </h3>
               {renderChart()}
               {selectedMilestone?.due_on && (
                 <p className="text-xs text-gray-400 mt-3 text-center">
-                  期限: {new Date(selectedMilestone.due_on).toLocaleDateString('ja-JP')}
+                  {t('burndown.dueDate')} {new Date(selectedMilestone.due_on).toLocaleDateString(lang === 'en' ? 'en-US' : 'ja-JP')}
                 </p>
               )}
             </div>
 
             {/* 説明 */}
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h4 className="text-xs font-bold text-gray-700 mb-3">バーンダウンチャートの見方</h4>
+              <h4 className="text-xs font-bold text-gray-700 mb-3">{t('burndown.guideTitle')}</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-600">
                 <div className="flex items-start gap-2">
                   <span className="inline-block w-5 h-0.5 mt-2 bg-gray-400 shrink-0" style={{ borderTop: '2px dashed #9ca3af' }} />
                   <div>
-                    <p className="font-medium text-gray-700">理想線（グレー破線）</p>
-                    <p className="mt-0.5">期間内に課題を均等に消化した場合の理想的な推移です。開始時の総課題数から 0 へ向かう直線で表されます。</p>
+                    <p className="font-medium text-gray-700">{t('burndown.idealLineDesc')}</p>
+                    <p className="mt-0.5">{t('burndown.idealLineDetail')}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="inline-block w-5 h-0.5 mt-2 bg-blue-500 shrink-0" />
                   <div>
-                    <p className="font-medium text-gray-700">実績線（青実線）</p>
-                    <p className="mt-0.5">実際の残課題数の推移です。Issue を Close すると残数が減少します。理想線より下なら順調、上なら遅延しています。</p>
+                    <p className="font-medium text-gray-700">{t('burndown.actualLineDesc')}</p>
+                    <p className="mt-0.5">{t('burndown.actualLineDetail')}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="inline-block w-5 h-0.5 mt-2 shrink-0" style={{ borderTop: '2px dashed #ef4444' }} />
                   <div>
-                    <p className="font-medium text-gray-700">今日の線（赤破線）</p>
-                    <p className="mt-0.5">現在の日付を示す縦線です。この線より左が過去の実績、右が残りの期間です。</p>
+                    <p className="font-medium text-gray-700">{t('burndown.todayLineDesc')}</p>
+                    <p className="mt-0.5">{t('burndown.todayLineDetail')}</p>
                   </div>
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-400">
-                <p>バーンダウンチャートは GitHub Milestone に紐づく Issue の消化状況を可視化します。</p>
-                <p className="mt-1">Milestone の期限日（Due date）がチャートの終了日となり、Issue の Close が「完了」として集計されます。</p>
+                <p>{t('burndown.guideNote1')}</p>
+                <p className="mt-1">{t('burndown.guideNote2')}</p>
               </div>
             </div>
           </div>
         ) : (
           <div className="text-center py-16 text-gray-400">
-            マイルストーンに紐づく課題がありません
+            {t('burndown.noIssues')}
           </div>
         )}
       </div>

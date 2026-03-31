@@ -1,21 +1,23 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchIssueEvents } from '../api/github'
-
-const EVENT_LABELS = {
-  closed: { text: '完了', color: 'bg-green-100 text-green-700' },
-  reopened: { text: '再オープン', color: 'bg-blue-100 text-blue-700' },
-  labeled: { text: 'ラベル追加', color: 'bg-purple-100 text-purple-700' },
-  unlabeled: { text: 'ラベル除去', color: 'bg-gray-100 text-gray-600' },
-  assigned: { text: '担当者設定', color: 'bg-yellow-100 text-yellow-700' },
-  unassigned: { text: '担当者解除', color: 'bg-gray-100 text-gray-600' },
-  milestoned: { text: 'MS設定', color: 'bg-indigo-100 text-indigo-700' },
-  demilestoned: { text: 'MS解除', color: 'bg-gray-100 text-gray-600' },
-  renamed: { text: '名前変更', color: 'bg-orange-100 text-orange-700' },
-}
+import { useTranslation } from '../i18n'
 
 function ActivityFeed({ onSelectIssue, allIssues }) {
+  const { t, lang } = useTranslation()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const EVENT_LABELS = {
+    closed: { text: t('activity.closed'), color: 'bg-green-100 text-green-700' },
+    reopened: { text: t('activity.reopened'), color: 'bg-blue-100 text-blue-700' },
+    labeled: { text: t('activity.labeled'), color: 'bg-purple-100 text-purple-700' },
+    unlabeled: { text: t('activity.unlabeled'), color: 'bg-gray-100 text-gray-600' },
+    assigned: { text: t('activity.assigned'), color: 'bg-yellow-100 text-yellow-700' },
+    unassigned: { text: t('activity.unassigned'), color: 'bg-gray-100 text-gray-600' },
+    milestoned: { text: t('activity.milestoned'), color: 'bg-indigo-100 text-indigo-700' },
+    demilestoned: { text: t('activity.demilestoned'), color: 'bg-gray-100 text-gray-600' },
+    renamed: { text: t('activity.renamed'), color: 'bg-orange-100 text-orange-700' },
+  }
 
   const loadEvents = useCallback(async () => {
     try {
@@ -33,7 +35,7 @@ function ActivityFeed({ onSelectIssue, allIssues }) {
   }, [loadEvents])
 
   if (loading) {
-    return <div className="text-center py-16 text-gray-400">読み込み中...</div>
+    return <div className="text-center py-16 text-gray-400">{t('common.loading')}</div>
   }
 
   const issueByNumber = new Map(allIssues.map((i) => [i.number, i]))
@@ -42,7 +44,7 @@ function ActivityFeed({ onSelectIssue, allIssues }) {
   const grouped = new Map()
   for (const event of events) {
     if (!EVENT_LABELS[event.event]) continue
-    const date = new Date(event.created_at).toLocaleDateString('ja-JP')
+    const date = new Date(event.created_at).toLocaleDateString(lang === 'en' ? 'en-US' : 'ja-JP')
     if (!grouped.has(date)) grouped.set(date, [])
     grouped.get(date).push(event)
   }
@@ -51,7 +53,7 @@ function ActivityFeed({ onSelectIssue, allIssues }) {
     <div className="flex-1 overflow-auto p-6">
       <div className="max-w-2xl mx-auto">
         {grouped.size === 0 ? (
-          <p className="text-center py-16 text-gray-400">更新履歴がありません</p>
+          <p className="text-center py-16 text-gray-400">{t('activity.noEvents')}</p>
         ) : (
           Array.from(grouped.entries()).map(([date, dayEvents]) => (
             <div key={date} className="mb-6">
@@ -103,7 +105,7 @@ function ActivityFeed({ onSelectIssue, allIssues }) {
         )}
         {grouped.size > 0 && (
           <p className="text-xs text-gray-400 text-center mt-4 pb-4">
-            直近のイベントのみ表示しています（最大 300 件）
+            {t('activity.recentOnly')}
           </p>
         )}
       </div>

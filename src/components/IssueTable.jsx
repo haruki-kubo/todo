@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react'
 import { getPriorityKey, getPriorityLabel, getCategoryLabel, getStatusLabel } from '../utils/labels'
 import { parseDeadline, getDeadlineInfo } from '../utils/deadline'
 import { flattenTree, getSubtaskProgress } from '../utils/hierarchy'
+import { useTranslation } from '../i18n'
 
 function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusLabels, onSelectIssue, selectedIssueId }) {
+  const { t, lang } = useTranslation()
   const [sortKey, setSortKey] = useState('created')
   const [sortAsc, setSortAsc] = useState(false)
   const [filterPriority, setFilterPriority] = useState('all')
@@ -160,7 +162,7 @@ function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusL
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="キーワードで検索..."
+          placeholder={t('table.search')}
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 w-52 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
         />
         <select
@@ -169,7 +171,7 @@ function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusL
           onChange={(e) => setFilterPriority(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700"
         >
-          <option value="all">全ての優先度</option>
+          <option value="all">{t('table.allPriority')}</option>
           {priorityLabels.map((p) => (
             <option key={p.key} value={p.key}>{p.name}</option>
           ))}
@@ -181,7 +183,7 @@ function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusL
             onChange={(e) => setFilterStatus(e.target.value)}
             className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700"
           >
-            <option value="all">全てのステータス</option>
+            <option value="all">{t('table.allStatus')}</option>
             {statusLabels.map((s) => (
               <option key={s.key} value={s.name}>{s.name}</option>
             ))}
@@ -193,8 +195,8 @@ function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusL
           onChange={(e) => setFilterAssignee(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700"
         >
-          <option value="all">全ての担当者</option>
-          <option value="__unassigned__">未設定</option>
+          <option value="all">{t('table.allAssignee')}</option>
+          <option value="__unassigned__">{t('common.unset')}</option>
           {assignees.map((a) => (
             <option key={a.login} value={a.login}>{a.login}</option>
           ))}
@@ -205,7 +207,7 @@ function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusL
           onChange={(e) => setFilterCategory(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700"
         >
-          <option value="all">全てのカテゴリ</option>
+          <option value="all">{t('table.allCategory')}</option>
           {categoryLabels.map((c) => (
             <option key={c.name} value={c.name}>{c.name}</option>
           ))}
@@ -217,9 +219,9 @@ function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusL
             onChange={(e) => setFilterParentOnly(e.target.checked)}
             className="rounded border-gray-300"
           />
-          親タスクのみ
+          {t('table.parentOnly')}
         </label>
-        <span className="text-xs text-gray-400 ml-auto">{filtered.length}件</span>
+        <span className="text-xs text-gray-400 ml-auto">{filtered.length}{t('common.items')}</span>
       </div>
 
       {/* テーブル */}
@@ -231,51 +233,51 @@ function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusL
                 className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 w-16"
                 onClick={() => handleSort('number')}
               >
-                # {sortIcon('number')}
+                {t('table.colNumber')} {sortIcon('number')}
               </th>
               <th
                 className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700"
                 onClick={() => handleSort('title')}
               >
-                件名 {sortIcon('title')}
+                {t('table.colTitle')} {sortIcon('title')}
               </th>
               <th
                 className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 w-24"
                 onClick={() => handleSort('assignee')}
               >
-                担当者 {sortIcon('assignee')}
+                {t('table.colAssignee')} {sortIcon('assignee')}
               </th>
               {statusLabels.length > 0 && (
                 <th
                   className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 w-28"
                   onClick={() => handleSort('status')}
                 >
-                  状態 {sortIcon('status')}
+                  {t('table.colStatus')} {sortIcon('status')}
                 </th>
               )}
               <th
                 className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 w-28"
                 onClick={() => handleSort('priority')}
               >
-                優先度 {sortIcon('priority')}
+                {t('table.colPriority')} {sortIcon('priority')}
               </th>
               <th
                 className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 w-32"
                 onClick={() => handleSort('category')}
               >
-                カテゴリ {sortIcon('category')}
+                {t('table.colCategory')} {sortIcon('category')}
               </th>
               <th
                 className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 w-32"
                 onClick={() => handleSort('deadline')}
               >
-                期限 {sortIcon('deadline')}
+                {t('table.colDeadline')} {sortIcon('deadline')}
               </th>
               <th
                 className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 w-28"
                 onClick={() => handleSort('created')}
               >
-                作成日 {sortIcon('created')}
+                {t('table.colCreated')} {sortIcon('created')}
               </th>
             </tr>
           </thead>
@@ -283,7 +285,7 @@ function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusL
             {visibleRows.length === 0 ? (
               <tr>
                 <td colSpan={statusLabels.length > 0 ? 8 : 7} className="text-center py-12 text-gray-400">
-                  該当する課題がありません
+                  {t('table.noIssues')}
                 </td>
               </tr>
             ) : (
@@ -400,7 +402,7 @@ function IssueTable({ issues, hierarchy, priorityLabels, categoryLabels, statusL
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-400">
-                      {new Date(issue.created_at).toLocaleDateString('ja-JP')}
+                      {new Date(issue.created_at).toLocaleDateString(lang === 'en' ? 'en-US' : 'ja-JP')}
                     </td>
                   </tr>
                 )

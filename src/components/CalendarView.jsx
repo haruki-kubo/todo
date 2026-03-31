@@ -1,13 +1,18 @@
 import { useState, useMemo } from 'react'
 import { parseDeadline } from '../utils/deadline'
-
-const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
+import { useTranslation } from '../i18n'
 
 function dateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function CalendarView({ issues, onSelectIssue, selectedIssueId }) {
+  const { t, lang } = useTranslation()
+
+  const WEEKDAYS = lang === 'en'
+    ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    : ['日', '月', '火', '水', '木', '金', '土']
+
   const [currentDate, setCurrentDate] = useState(() => {
     const d = new Date()
     return { year: d.getFullYear(), month: d.getMonth() }
@@ -80,15 +85,15 @@ function CalendarView({ issues, onSelectIssue, selectedIssueId }) {
       {/* ツールバー */}
       <div className="flex items-center gap-4 px-4 py-2 bg-white border-b border-gray-200">
         <button onClick={prevMonth} className="text-sm text-gray-500 hover:text-gray-700 px-2">&lt;</button>
-        <h3 className="text-sm font-bold text-gray-700 w-32 text-center">
-          {currentDate.year}年 {currentDate.month + 1}月
+        <h3 className="text-sm font-bold text-gray-700 w-40 text-center">
+          {new Date(currentDate.year, currentDate.month).toLocaleDateString(lang === 'en' ? 'en-US' : 'ja-JP', { year: 'numeric', month: 'long' })}
         </h3>
         <button onClick={nextMonth} className="text-sm text-gray-500 hover:text-gray-700 px-2">&gt;</button>
         <button
           onClick={goToday}
           className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded-lg transition-colors"
         >
-          今日
+          {t('calendar.today')}
         </button>
       </div>
 
@@ -155,7 +160,7 @@ function CalendarView({ issues, onSelectIssue, selectedIssueId }) {
                     )
                   })}
                   {dayIssues.length > 3 && (
-                    <p className="text-[10px] text-gray-400 px-1">+{dayIssues.length - 3}件</p>
+                    <p className="text-[10px] text-gray-400 px-1">{t('calendar.moreItems', { count: dayIssues.length - 3 })}</p>
                   )}
                 </div>
               </div>

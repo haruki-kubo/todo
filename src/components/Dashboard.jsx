@@ -1,8 +1,11 @@
 import { useMemo } from 'react'
 import { getPriorityKey, getStatusLabel } from '../utils/labels'
 import { parseDeadline, getDeadlineInfo } from '../utils/deadline'
+import { useTranslation } from '../i18n'
 
 function Dashboard({ issues, priorityLabels, statusLabels, milestones, onSelectIssue, onViewChange }) {
+  const { t, lang } = useTranslation()
+
   const stats = useMemo(() => {
     const overdue = []
     const dueSoon = []
@@ -27,21 +30,21 @@ function Dashboard({ issues, priorityLabels, statusLabels, milestones, onSelectI
 
       // ステータス別
       const status = getStatusLabel(issue, statusLabels)
-      const sKey = status?.name || '未設定'
+      const sKey = status?.name || t('common.unset')
       statusCounts.set(sKey, (statusCounts.get(sKey) || 0) + 1)
 
       // 優先度別
       const pKey = getPriorityKey(issue, priorityLabels)
-      const pName = priorityLabels.find((p) => p.key === pKey)?.name || '未設定'
+      const pName = priorityLabels.find((p) => p.key === pKey)?.name || t('common.unset')
       priorityCounts.set(pName, (priorityCounts.get(pName) || 0) + 1)
 
       // 担当者別
-      const aKey = issue.assignee?.login || '未設定'
+      const aKey = issue.assignee?.login || t('common.unset')
       assigneeCounts.set(aKey, (assigneeCounts.get(aKey) || 0) + 1)
     }
 
     return { overdue, dueSoon, recentlyCreated, statusCounts, priorityCounts, assigneeCounts }
-  }, [issues, priorityLabels, statusLabels])
+  }, [issues, priorityLabels, statusLabels, t])
 
   const openMilestones = milestones.filter((m) => m.state === 'open')
 
@@ -51,19 +54,19 @@ function Dashboard({ issues, priorityLabels, statusLabels, milestones, onSelectI
         {/* サマリーカード */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">総課題数</p>
+            <p className="text-xs text-gray-500">{t('dashboard.totalIssues')}</p>
             <p className="text-2xl font-bold text-gray-800 mt-1">{issues.length}</p>
           </div>
           <div className="bg-white rounded-xl border border-red-200 p-4">
-            <p className="text-xs text-red-500">期限超過</p>
+            <p className="text-xs text-red-500">{t('dashboard.overdue')}</p>
             <p className="text-2xl font-bold text-red-600 mt-1">{stats.overdue.length}</p>
           </div>
           <div className="bg-white rounded-xl border border-orange-200 p-4">
-            <p className="text-xs text-orange-500">期限間近（3日以内）</p>
+            <p className="text-xs text-orange-500">{t('dashboard.dueSoon')}</p>
             <p className="text-2xl font-bold text-orange-500 mt-1">{stats.dueSoon.length}</p>
           </div>
           <div className="bg-white rounded-xl border border-blue-200 p-4">
-            <p className="text-xs text-blue-500">今週作成</p>
+            <p className="text-xs text-blue-500">{t('dashboard.createdThisWeek')}</p>
             <p className="text-2xl font-bold text-blue-600 mt-1">{stats.recentlyCreated.length}</p>
           </div>
         </div>
@@ -72,16 +75,16 @@ function Dashboard({ issues, priorityLabels, statusLabels, milestones, onSelectI
           {/* 期限超過・間近の課題 */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-gray-700">要対応の課題</h3>
+              <h3 className="text-sm font-bold text-gray-700">{t('dashboard.needsAction')}</h3>
               <button
                 onClick={() => onViewChange?.('issues')}
                 className="text-[10px] text-blue-500 hover:text-blue-700"
               >
-                課題一覧へ
+                {t('dashboard.goToIssues')}
               </button>
             </div>
             {stats.overdue.length === 0 && stats.dueSoon.length === 0 ? (
-              <p className="text-xs text-gray-400 py-4 text-center">期限超過・間近の課題はありません</p>
+              <p className="text-xs text-gray-400 py-4 text-center">{t('dashboard.noUrgentIssues')}</p>
             ) : (
               <div className="space-y-1.5 max-h-60 overflow-y-auto">
                 {[...stats.overdue, ...stats.dueSoon].map((issue) => {
@@ -110,16 +113,16 @@ function Dashboard({ issues, priorityLabels, statusLabels, milestones, onSelectI
           {/* ステータス別集計 */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-gray-700">ステータス別</h3>
+              <h3 className="text-sm font-bold text-gray-700">{t('dashboard.byStatus')}</h3>
               <button
                 onClick={() => onViewChange?.('board')}
                 className="text-[10px] text-blue-500 hover:text-blue-700"
               >
-                ボードへ
+                {t('dashboard.goToBoard')}
               </button>
             </div>
             {statusLabels.length === 0 ? (
-              <p className="text-xs text-gray-400 py-4 text-center">ステータスラベルが未設定です</p>
+              <p className="text-xs text-gray-400 py-4 text-center">{t('dashboard.noStatusLabels')}</p>
             ) : (
               <div className="space-y-2">
                 {[...stats.statusCounts.entries()].map(([name, count]) => {
@@ -144,7 +147,7 @@ function Dashboard({ issues, priorityLabels, statusLabels, milestones, onSelectI
 
           {/* 担当者別集計 */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-bold text-gray-700 mb-3">担当者別</h3>
+            <h3 className="text-sm font-bold text-gray-700 mb-3">{t('dashboard.byAssignee')}</h3>
             <div className="space-y-2">
               {[...stats.assigneeCounts.entries()]
                 .sort((a, b) => b[1] - a[1])
@@ -158,7 +161,7 @@ function Dashboard({ issues, priorityLabels, statusLabels, milestones, onSelectI
                         <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[8px] text-gray-400">?</span>
                       )}
                       <span className="text-xs text-gray-600 flex-1 truncate">{name}</span>
-                      <span className="text-xs text-gray-500">{count}件</span>
+                      <span className="text-xs text-gray-500">{count}{t('common.items')}</span>
                     </div>
                   )
                 })}
@@ -168,16 +171,16 @@ function Dashboard({ issues, priorityLabels, statusLabels, milestones, onSelectI
           {/* マイルストーン進捗 */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-gray-700">マイルストーン</h3>
+              <h3 className="text-sm font-bold text-gray-700">{t('dashboard.milestone')}</h3>
               <button
                 onClick={() => onViewChange?.('burndown')}
                 className="text-[10px] text-blue-500 hover:text-blue-700"
               >
-                バーンダウンへ
+                {t('dashboard.goToBurndown')}
               </button>
             </div>
             {openMilestones.length === 0 ? (
-              <p className="text-xs text-gray-400 py-4 text-center">Open なマイルストーンがありません</p>
+              <p className="text-xs text-gray-400 py-4 text-center">{t('dashboard.noOpenMilestones')}</p>
             ) : (
               <div className="space-y-3">
                 {openMilestones.map((ms) => {
@@ -199,7 +202,7 @@ function Dashboard({ issues, priorityLabels, statusLabels, milestones, onSelectI
                       </div>
                       {ms.due_on && (
                         <p className="text-[10px] text-gray-400 mt-0.5">
-                          期限: {new Date(ms.due_on).toLocaleDateString('ja-JP')}
+                          {t('dashboard.dueDate')}: {new Date(ms.due_on).toLocaleDateString(lang === 'en' ? 'en-US' : 'ja-JP')}
                         </p>
                       )}
                     </div>
