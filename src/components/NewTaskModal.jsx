@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createIssue, updateIssueBody, setMilestone } from '../api/github'
-import { insertDeadlineToBody } from '../utils/deadline'
+import { insertDeadlineToBody, insertStartDateToBody } from '../utils/deadline'
 import { appendChildToBody } from '../utils/hierarchy'
 
 function NewTaskModal({ allIssues, hierarchy, milestones, priorityLabels, categoryLabels, statusLabels, onClose, onCreated }) {
@@ -9,6 +9,7 @@ function NewTaskModal({ allIssues, hierarchy, milestones, priorityLabels, catego
   const [priority, setPriority] = useState('')
   const [category, setCategory] = useState('')
   const [status, setStatus] = useState('')
+  const [startDate, setStartDate] = useState('')
   const [deadline, setDeadline] = useState('')
   const [parentNumber, setParentNumber] = useState('')
   const [milestoneNumber, setMilestoneNumber] = useState('')
@@ -28,15 +29,16 @@ function NewTaskModal({ allIssues, hierarchy, milestones, priorityLabels, catego
       if (category) labels.push(category)
       if (status) labels.push(status)
 
-      const issueBody = insertDeadlineToBody(body, deadline)
+      let issueBody = insertDeadlineToBody(body, deadline)
+      issueBody = insertStartDateToBody(issueBody, startDate)
       const created = await createIssue(title.trim(), issueBody, labels)
 
       // マイルストーンが選択されている場合、設定
       if (milestoneNumber && created?.number) {
         try {
           await setMilestone(created.number, parseInt(milestoneNumber, 10))
-        } catch {
-          // マイルストーン設定失敗は無視（Issue は作成済み）
+        } catch (msErr) {
+          alert(`課題 #${created.number} は作成されましたが、マイルストーンの設定に失敗しました。\n\nエラー: ${msErr.message}`)
         }
       }
 
@@ -225,17 +227,31 @@ function NewTaskModal({ allIssues, hierarchy, milestones, priorityLabels, catego
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">
-              期限
-            </label>
-            <input
-              aria-label="期限"
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white text-gray-700"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">
+                開始日
+              </label>
+              <input
+                aria-label="開始日"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white text-gray-700"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">
+                期限
+              </label>
+              <input
+                aria-label="期限"
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white text-gray-700"
+              />
+            </div>
           </div>
 
           <div className="flex gap-2 pt-2 pb-4">

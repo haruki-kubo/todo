@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
+import { useState, useRef, useMemo, useCallback } from 'react'
 import { getPriorityKey, getStatusKey } from '../utils/labels'
 import { setLabels } from '../api/github'
 import TaskCard from './TaskCard'
@@ -210,11 +210,6 @@ function BoardView({ issues, priorityLabels, statusLabels, onUpdate, onSelectIss
 
     setDraggingColumnKey(null)
   }, [draggingColumnKey, activeLabels, effectiveGroupBy])
-
-  // 並び替え済みラベルが変わったらリセット検証（ラベルが削除/追加された場合）
-  useEffect(() => {
-    // ラベル追加/削除時に保存済み順序と整合させる（新しいラベルは末尾に追加）
-  }, [statusLabels, priorityLabels])
 
   return (
     <div className="flex flex-col flex-1 min-h-0">

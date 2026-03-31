@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { fetchComments, closeIssue, setLabels, setMilestone, setAssignees } from '../api/github'
+import { fetchComments, closeIssue, setLabels, setMilestone, setAssignees, updateIssueBody } from '../api/github'
 import { getCategoryLabel, getPriorityLabel, getStatusLabel } from '../utils/labels'
-import { parseDeadline, getDeadlineInfo } from '../utils/deadline'
+import { parseDeadline, parseStartDate, getDeadlineInfo, insertDeadlineToBody } from '../utils/deadline'
 import { parseChildNumbers, getSubtaskProgress, parseRelatedNumbers } from '../utils/hierarchy'
 import CommentForm from './CommentForm'
 
@@ -27,6 +27,7 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
   const priority = getPriorityLabel(issue, priorityLabels)
   const category = getCategoryLabel(issue, categoryLabels)
   const status = getStatusLabel(issue, statusLabels)
+  const issueStartDate = parseStartDate(issue.body)
   const deadline = parseDeadline(issue.body)
   const deadlineInfo = getDeadlineInfo(deadline)
 
@@ -146,34 +147,115 @@ function IssueDetailPanel({ issue, allIssues, hierarchy, milestones, collaborato
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 w-16 shrink-0">カテゴリ</span>
-            {category ? (
-              <span
-                className="text-[11px] px-2 py-0.5 rounded-full text-white"
-                style={{ backgroundColor: category.color }}
-              >
-                {category.name}
-              </span>
-            ) : (
-              <span className="text-xs text-gray-400">未設定</span>
-            )}
+            <select
+              value={category?.name || ''}
+              onChange={async (e) => {
+                setOperating(true)
+                try {
+                  const currentLabels = issue.labels.map((l) => l.name)
+                  const withoutCategory = currentLabels.filter(
+                    (name) => !categoryLabels.some((c) => c.name === name)
+                  )
+                  const newLabels = e.target.value ? [...withoutCategory, e.target.value] : withoutCategory
+                  await setLabels(issue.number, newLabels)
+                  onUpdate()
+                } catch (err) {
+                  alert('カテゴリ変更に失敗しました: ' + err.message)
+                } finally {
+                  setOperating(false)
+                }
+              }}
+              disabled={operating}
+              className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
+            >
+              <option value="">未設定</option>
+              {categoryLabels.map((c) => (
+                <option key={c.name} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400 w-16 shrink-0">開始日</span>
+            <input
+              type="date"
+              value={issueStartDate ? `${issueStartDate.getFullYear()}-${String(issueStartDate.getMonth() + 1).padStart(2, '0')}-${String(issueStartDate.getDate()).padStart(2, '0')}` : ''}
+              onChange={async (e) => {
+                setOperating(true)
+                try {
+                  const currentBody = issue.body || ''
+                  const startRegex = /📅\s*開始日[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}/
+                  let newBody
+                  if (e.target.value) {
+                    const startLine = `📅 開始日: ${e.target.value}`
+                    if (startRegex.test(currentBody)) {
+                      newBody = currentBody.replace(startRegex, startLine)
+                    } else {
+                      newBody = currentBody ? `${startLine}\n${currentBody}` : startLine
+                    }
+                  } else {
+                    newBody = currentBody.replace(/📅\s*開始日[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*\n*/g, '').trim()
+                  }
+                  await updateIssueBody(issue.number, newBody)
+                  onUpdate()
+                } catch (err) {
+                  alert('開始日変更に失敗しました: ' + err.message)
+                } finally {
+                  setOperating(false)
+                }
+              }}
+              disabled={operating}
+              className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
+            />
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 w-16 shrink-0">期限</span>
-            {deadlineInfo ? (
-              <span
-                className={`text-xs ${
-                  deadlineInfo.status === 'overdue'
-                    ? 'text-red-600 font-bold'
-                    : deadlineInfo.status === 'soon'
-                      ? 'text-orange-500 font-medium'
-                      : 'text-gray-600'
-                }`}
-              >
-                {deadlineInfo.text}
-              </span>
-            ) : (
-              <span className="text-xs text-gray-400">未設定</span>
-            )}
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={deadline ? `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')}` : ''}
+                onChange={async (e) => {
+                  setOperating(true)
+                  try {
+                    const currentBody = issue.body || ''
+                    const deadlineRegex = /📅\s*期限[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}/
+                    let newBody
+                    if (e.target.value) {
+                      const deadlineLine = `📅 期限: ${e.target.value}`
+                      if (deadlineRegex.test(currentBody)) {
+                        newBody = currentBody.replace(deadlineRegex, deadlineLine)
+                      } else {
+                        newBody = insertDeadlineToBody(currentBody, e.target.value)
+                      }
+                    } else {
+                      // 期限を削除
+                      newBody = currentBody.replace(/📅\s*期限[:：]\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*\n*/g, '').trim()
+                    }
+                    await updateIssueBody(issue.number, newBody)
+                    onUpdate()
+                  } catch (err) {
+                    alert('期限変更に失敗しました: ' + err.message)
+                  } finally {
+                    setOperating(false)
+                  }
+                }}
+                disabled={operating}
+                className="text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700"
+              />
+              {deadlineInfo && (
+                <span
+                  className={`text-[10px] ${
+                    deadlineInfo.status === 'overdue'
+                      ? 'text-red-600 font-bold'
+                      : deadlineInfo.status === 'soon'
+                        ? 'text-orange-500 font-medium'
+                        : 'text-gray-500'
+                  }`}
+                >
+                  {deadlineInfo.status === 'overdue' ? '🔥' : deadlineInfo.status === 'soon' ? '⚠️' : ''}
+                  {deadlineInfo.text.replace(/^.+?\s/, '')}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 w-16 shrink-0">MS</span>

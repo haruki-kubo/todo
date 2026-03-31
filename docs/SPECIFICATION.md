@@ -28,6 +28,8 @@
 | 2026-03-29 | 3.3 | ドキュメント整備: サイドバーのナビゲーション一覧を 8 メニューに更新。`activeView` の型定義・デフォルト値を `'dashboard'` に修正。コンポーネントツリーに全 8 ビューを反映 |
 | 2026-03-29 | 3.4 | `verifyToken` を 2 段階検証（ユーザー認証 + リポジトリアクセス）に強化。`selectedIssue` の同期を `allIssues` からも探すよう修正。ActivityFeed に表示範囲の説明を追加 |
 | 2026-03-29 | 3.5 | `verifyToken` を 3 段階検証に強化（書き込み権限チェック追加）。`fetchCollaborators` の戻り値を `{ data, error }` に変更し、UI にエラー表示を追加。仕様書の `verifyToken` シグネチャを更新 |
+| 2026-03-31 | 3.7 | IssueDetailPanel にカテゴリ変更（ドロップダウン + `setLabels` API）と期限変更（date 入力 + `updateIssueBody` で本文の期限行を自動更新/挿入/削除）を追加 |
+| 2026-03-31 | 3.8 | `parseStartDate` / `insertStartDateToBody` を deadline.js に追加。GanttChart の items に `startDate` を追加しバー開始位置を開始日ベースに変更。IssueDetailPanel に開始日入力を追加。NewTaskModal に開始日フィールドを追加 |
 
 ---
 
@@ -367,6 +369,46 @@ GET /repos/{owner}/{repo}/labels?per_page=100&page={n}
 
 - ページネーション: 100 件/ページ、全件取得するまでループ
 
+#### `createLabel(name, color, description): Promise<Label>`
+
+```
+POST /repos/{owner}/{repo}/labels
+Body: { name, color: '色コード(#なし)', description }
+```
+
+#### `updateLabel(currentName, newName, color, description): Promise<Label>`
+
+```
+PATCH /repos/{owner}/{repo}/labels/{currentName}
+Body: { new_name, color: '色コード(#なし)', description }
+```
+
+#### `deleteLabel(name): Promise<null>`
+
+```
+DELETE /repos/{owner}/{repo}/labels/{name}
+```
+
+#### `createMilestone(title, description, dueOn): Promise<Milestone>`
+
+```
+POST /repos/{owner}/{repo}/milestones
+Body: { title, description, due_on?: ISO8601 }
+```
+
+#### `updateMilestone(number, title, description, dueOn, state): Promise<Milestone>`
+
+```
+PATCH /repos/{owner}/{repo}/milestones/{number}
+Body: { title, description, due_on?: ISO8601, state }
+```
+
+#### `deleteMilestone(number): Promise<null>`
+
+```
+DELETE /repos/{owner}/{repo}/milestones/{number}
+```
+
 #### `fetchComments(issueNumber): Promise<Comment[]>`
 
 ```
@@ -429,14 +471,45 @@ GET /repos/{owner}/{repo}/issues?milestone={number}&state=all&per_page=100&page=
 - 指定 Milestone に属する全 Issue（Open + Closed）を取得
 - PR 除外
 
+#### `setMilestone(issueNumber, milestoneNumber): Promise<Issue>`
+
+```
+PATCH /repos/{owner}/{repo}/issues/{number}
+Body: { milestone: number | null }
+```
+
+#### `setAssignees(issueNumber, assignees): Promise<Issue>`
+
+```
+PATCH /repos/{owner}/{repo}/issues/{number}
+Body: { assignees: string[] }
+```
+
+#### `fetchCollaborators(): Promise<{ data: Collaborator[], error: string | null }>`
+
+```
+GET /repos/{owner}/{repo}/collaborators?per_page=100&page={n}
+```
+
+- 権限不足（403）の場合: `{ data: [], error: 'コラボレーター一覧の取得権限がありません' }`
+- 通信失敗の場合: `{ data: [], error: 'コラボレーター一覧の取得に失敗しました' }`
+
+#### `fetchIssueEvents(): Promise<IssueEvent[]>`
+
+```
+GET /repos/{owner}/{repo}/issues/events?per_page=100&page={n}
+```
+
+- 最新 3 ページ分（最大 300 件）のみ取得
+
 #### `verifyToken(token): Promise<{ valid: boolean, error: string | null }>`
 
 3 段階でトークンを検証する。`request()` ラッパーを使わず直接 `fetch` する。
 
 ```
-1. GET /user                              → トークン自体の有効性
-2. GET /repos/{owner}/{repo}              → 対象リポジトリへのアクセス権
-3. レスポンスの permissions.push / admin   → 書き込み権限
+1. GET /user                                         → トークン自体の有効性
+2. GET /repos/{owner}/{repo}                         → 対象リポジトリへのアクセス権
+3. POST /repos/{owner}/{repo}/labels（テストラベル）   → 書き込み権限（403/404 = read-only、201 = 即削除、422 = 既存 = OK）
 ```
 
 - 各ステップで失敗した場合、`{ valid: false, error: '具体的なエラーメッセージ' }` を返す

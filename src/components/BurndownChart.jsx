@@ -176,11 +176,12 @@ function BurndownChart() {
       return `${xScale(i)},${yScale(idealRemaining)}`
     }).join(' ')
 
-    // 実績線（過去のみ）
-    const actualDays = days.filter((d) => d.isPast)
-    const actualPoints = actualDays.map((d, i) =>
-      `${xScale(i)},${yScale(d.remaining)}`
-    ).join(' ')
+    // 実績線（過去のみ、days 全体のインデックスを使用）
+    const actualPoints = days
+      .map((d, i) => d.isPast ? `${xScale(i)},${yScale(d.remaining)}` : null)
+      .filter(Boolean)
+      .join(' ')
+    const lastPastIndex = days.findLastIndex((d) => d.isPast)
 
     // Y 軸グリッド
     const yTicks = []
@@ -251,10 +252,10 @@ function BurndownChart() {
         )}
 
         {/* 実績線の最後のポイント */}
-        {actualDays.length > 0 && (
+        {lastPastIndex >= 0 && (
           <circle
-            cx={xScale(actualDays.length - 1)}
-            cy={yScale(actualDays[actualDays.length - 1].remaining)}
+            cx={xScale(lastPastIndex)}
+            cy={yScale(days[lastPastIndex].remaining)}
             r="4" fill="#3b82f6"
           />
         )}

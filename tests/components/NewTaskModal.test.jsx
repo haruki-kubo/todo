@@ -83,8 +83,7 @@ describe('NewTaskModal', () => {
     await user.click(screen.getByRole('button', { name: '処理中' }))
     await user.click(screen.getByRole('button', { name: '🔴 緊急' }))
     await user.selectOptions(screen.getByLabelText('カテゴリ'), '🏢 経理総務')
-    const deadlineInput = document.querySelector('input[type="date"]')
-    await user.type(deadlineInput, '2026-04-05')
+    await user.type(screen.getByLabelText('期限'), '2026-04-05')
     await user.click(screen.getByRole('button', { name: '追加する' }))
 
     await waitFor(() => {

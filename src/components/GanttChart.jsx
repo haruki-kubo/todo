@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { getPriorityLabel, getStatusLabel, getCategoryLabel } from '../utils/labels'
-import { parseDeadline, getDeadlineInfo } from '../utils/deadline'
+import { parseDeadline, parseStartDate, getDeadlineInfo } from '../utils/deadline'
 import { getSubtaskProgress } from '../utils/hierarchy'
 
 const SCALES = [
@@ -35,13 +35,14 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
 
   const scale = SCALES.find((s) => s.key === scaleKey) || SCALES[0]
 
-  // Issue にメタデータを付加
+  // Issue にメタデータを付加（開始日: 本文の📅開始日 → 起票日の優先順）
   const items = useMemo(() => {
     return issues.map((issue) => {
       const created = new Date(issue.created_at)
       created.setHours(0, 0, 0, 0)
+      const startDate = parseStartDate(issue.body) || created
       const deadline = parseDeadline(issue.body)
-      return { issue, created, deadline }
+      return { issue, created, startDate, deadline }
     })
   }, [issues])
 
@@ -58,7 +59,7 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
       return { startDate: s, endDate: e, totalDays: 38 }
     }
 
-    const allDates = items.flatMap((i) => [i.created, i.deadline].filter(Boolean))
+    const allDates = items.flatMap((i) => [i.startDate, i.deadline].filter(Boolean))
     allDates.push(now)
 
     const minDate = new Date(Math.min(...allDates))
@@ -287,12 +288,12 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
     const childNums = hierarchy.childrenMap.get(item.issue.number)
     if (!childNums || childNums.length === 0) return null
     const itemByNumber = new Map(items.map((it) => [it.issue.number, it]))
-    const dates = [item.created]
+    const dates = [item.startDate]
     if (item.deadline) dates.push(item.deadline)
     for (const cn of childNums) {
       const child = itemByNumber.get(cn)
       if (child) {
-        dates.push(child.created)
+        dates.push(child.startDate)
         if (child.deadline) dates.push(child.deadline)
       }
     }
@@ -303,7 +304,7 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
   }
 
   const renderRow = (treeItem) => {
-    const { issue, created, deadline } = treeItem
+    const { issue, startDate: itemStartDate, deadline } = treeItem
     const depth = treeItem.depth || 0
     const isParentRow = treeItem.isParent || false
     const priorityLabel = getPriorityLabel(issue, priorityLabels)
@@ -323,11 +324,11 @@ function GanttChart({ issues, allIssues, hierarchy, priorityLabels, categoryLabe
         const endPx = dateToPx(range.end)
         barWidth = Math.max(endPx - barLeft + (scale.key === 'day' ? colWidth : colWidth / 2), colWidth / 2)
       } else {
-        barLeft = dateToPx(created)
+        barLeft = dateToPx(itemStartDate)
         barWidth = colWidth / 2
       }
     } else {
-      barLeft = dateToPx(created)
+      barLeft = dateToPx(itemStartDate)
       if (deadline) {
         const deadlinePx = dateToPx(deadline)
         barWidth = Math.max(deadlinePx - barLeft + (scale.key === 'day' ? colWidth : colWidth / 2), colWidth / 2)

@@ -3,6 +3,10 @@ import { parseDeadline } from '../utils/deadline'
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function CalendarView({ issues, onSelectIssue, selectedIssueId }) {
   const [currentDate, setCurrentDate] = useState(() => {
     const d = new Date()
@@ -46,7 +50,7 @@ function CalendarView({ issues, onSelectIssue, selectedIssueId }) {
     for (const issue of issues) {
       const deadline = parseDeadline(issue.body)
       if (!deadline) continue
-      const key = `${deadline.getFullYear()}-${deadline.getMonth()}-${deadline.getDate()}`
+      const key = dateKey(deadline)
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(issue)
     }
@@ -105,8 +109,8 @@ function CalendarView({ issues, onSelectIssue, selectedIssueId }) {
 
           {/* 日付セル */}
           {calendarDays.map((day, i) => {
-            const dateKey = `${day.date.getFullYear()}-${day.date.getMonth()}-${day.date.getDate()}`
-            const dayIssues = issuesByDate.get(dateKey) || []
+            const dk = dateKey(day.date)
+            const dayIssues = issuesByDate.get(dk) || []
             const isToday = day.date.getTime() === today.getTime()
             const dayOfWeek = day.date.getDay()
             const isPast = day.date < today && day.isCurrentMonth

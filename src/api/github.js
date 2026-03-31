@@ -264,6 +264,12 @@ export async function verifyToken(token) {
   const headers = {
     Authorization: `token ${token}`,
     Accept: 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json',
+  }
+  const writeCheckLabel = {
+    name: '__write_check__',
+    color: '9ca3af',
+    description: 'IssueBoard write check',
   }
   // ステップ1: トークン自体の有効性を確認
   const userRes = await fetch(`${API_BASE}/user`, { headers })
@@ -287,7 +293,7 @@ export async function verifyToken(token) {
     // ステップ3: 書き込み権限を確認
     const writeCheckRes = await fetch(
       `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/labels`,
-      { method: 'POST', headers, body: JSON.stringify({ name: '__write_check__' }) }
+      { method: 'POST', headers, body: JSON.stringify(writeCheckLabel) }
     )
     if (writeCheckRes.status === 403 || writeCheckRes.status === 404) {
       return { valid: false, error: '読み取り専用のトークンです。トークンの権限を「Issues: Read and write」に変更してください。' }

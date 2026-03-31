@@ -177,7 +177,6 @@ function App() {
             <div className="flex-1 flex flex-col min-w-0">
               <BoardView
                 issues={issues}
-                hierarchy={hierarchy}
                 priorityLabels={priorityLabels}
                 statusLabels={statusLabels}
                 onUpdate={loadData}

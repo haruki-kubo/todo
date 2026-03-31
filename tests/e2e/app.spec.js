@@ -147,7 +147,8 @@ test.describe('Tasgy E2E', () => {
     await expect(detail).toBeVisible()
     await expect(detail).toContainText(seededIssues.soon)
     await expect(detail).toContainText('E2E seed comment: コメント表示確認用')
-    await expect(detail).toContainText('⚠️ 3/30')
+    // 期限アイコンは日付経過で ⚠️ → 🔥 に変わるため、日付部分のみ検証
+    await expect(detail).toContainText('3/30')
     await expect(detail.getByRole('link', { name: 'GitHubで開く' })).toHaveAttribute(
       'href',
       `https://github.com/${repoOwner}/${repoName}/issues/${soonIssue.number}`

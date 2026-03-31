@@ -1,16 +1,13 @@
 // 親 Issue の本文からサブタスクの Issue 番号一覧を抽出
 // 形式: - [ ] #N または - [x] #N
-const TASK_LIST_REGEX = /^-\s*\[[ x]\]\s*#(\d+)/gm
-
 export function parseChildNumbers(body) {
   if (!body) return []
+  const regex = /^-\s*\[[ x]\]\s*#(\d+)/gm
   const numbers = []
   let match
-  while ((match = TASK_LIST_REGEX.exec(body)) !== null) {
+  while ((match = regex.exec(body)) !== null) {
     numbers.push(parseInt(match[1], 10))
   }
-  // regex の lastIndex をリセット
-  TASK_LIST_REGEX.lastIndex = 0
   return numbers
 }
 

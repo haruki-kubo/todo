@@ -198,40 +198,73 @@ describe('github api wrapper', () => {
     await expect(addComment(1, 'x')).rejects.toThrow('GitHub API エラー (403): forbidden')
   })
 
-  test('verifyToken validates token, repository access, and write permission', async () => {
+  test('verifyToken: valid token with write permission', async () => {
     fetch
-      .mockResolvedValueOnce({ ok: true })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ permissions: { push: true, admin: false } }),
-      })
-      .mockResolvedValueOnce({ ok: false })
-      .mockResolvedValueOnce({ ok: true })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ permissions: { push: false, admin: false } }),
-      })
+      .mockResolvedValueOnce({ ok: true, status: 200 }) // GET /user
+      .mockResolvedValueOnce({ ok: true, status: 200 }) // GET /repos/{owner}/{repo}
+      .mockResolvedValueOnce({ status: 422 }) // POST /labels (already exists = write OK)
 
     await expect(verifyToken('good-token')).resolves.toEqual({
       valid: true,
       error: null,
     })
+    expect(fetch.mock.calls[0][0]).toBe('https://api.github.com/user')
+    expect(fetch.mock.calls[1][0]).toBe('https://api.github.com/repos/haruki-kubo/todo')
+    expect(fetch.mock.calls[2][0]).toBe('https://api.github.com/repos/haruki-kubo/todo/labels')
+    expect(fetch.mock.calls[2][1].method).toBe('POST')
+    expect(fetch.mock.calls[2][1].body).toBe(
+      JSON.stringify({
+        name: '__write_check__',
+        color: '9ca3af',
+        description: 'IssueBoard write check',
+      })
+    )
+  })
+
+  test('verifyToken: invalid token (401)', async () => {
+    fetch.mockResolvedValueOnce({ ok: false, status: 401 })
+
     await expect(verifyToken('bad-token')).resolves.toEqual({
       valid: false,
-      error: 'トークンが無効です。',
+      error: 'トークンが正しくありません。コピーし直してお試しください。',
     })
+  })
+
+  test('verifyToken: no repo access (404)', async () => {
+    fetch
+      .mockResolvedValueOnce({ ok: true, status: 200 })
+      .mockResolvedValueOnce({ ok: false, status: 404 })
+
+    await expect(verifyToken('no-access')).resolves.toEqual({
+      valid: false,
+      error: expect.stringContaining('アクセスできません'),
+    })
+  })
+
+  test('verifyToken: read-only token (403 on label POST)', async () => {
+    fetch
+      .mockResolvedValueOnce({ ok: true, status: 200 })
+      .mockResolvedValueOnce({ ok: true, status: 200 })
+      .mockResolvedValueOnce({ status: 403 })
+
     await expect(verifyToken('readonly-token')).resolves.toEqual({
       valid: false,
-      error: 'リポジトリ haruki-kubo/todo への書き込み権限がありません。Issues: Read and write 権限のトークンを使用してください。',
+      error: '読み取り専用のトークンです。トークンの権限を「Issues: Read and write」に変更してください。',
     })
+  })
 
-    expect(fetch.mock.calls[0][0]).toBe('https://api.github.com/user')
-    expect(fetch.mock.calls[0][1]).toEqual({
-      headers: {
-        Authorization: 'token good-token',
-        Accept: 'application/vnd.github.v3+json',
-      },
+  test('verifyToken: write check creates and deletes test label', async () => {
+    fetch
+      .mockResolvedValueOnce({ ok: true, status: 200 })
+      .mockResolvedValueOnce({ ok: true, status: 200 })
+      .mockResolvedValueOnce({ status: 201 }) // label created
+      .mockResolvedValueOnce({ ok: true }) // DELETE cleanup
+
+    await expect(verifyToken('good-token')).resolves.toEqual({
+      valid: true,
+      error: null,
     })
-    expect(fetch.mock.calls[1][0]).toBe('https://api.github.com/repos/haruki-kubo/todo')
+    // 4th call should be DELETE to clean up
+    expect(fetch.mock.calls[3][1].method).toBe('DELETE')
   })
 })
