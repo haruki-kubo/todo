@@ -169,9 +169,9 @@ OAuth 認証を使用する場合は、以下の 3 ステップが必要です�
 | 項目 | 設定値 |
 |------|--------|
 | **GitHub App name** | 任意（例: `IssueBoard`） |
-| **Homepage URL** | デプロイ先 URL（例: `https://haruki-kubo.github.io/todo/`） |
-| **Callback URL** | デプロイ先 URL（例: `https://haruki-kubo.github.io/todo/`） |
-| **Callback URL（追加）** | ローカル開発用: `http://localhost:5173/todo/` |
+| **Homepage URL** | デプロイ先 URL（例: `https://<user>.github.io/<repo>/` または `https://<org-hash>.pages.github.io/`） |
+| **Callback URL** | デプロイ先 URL（Homepage URL と同じ） |
+| **Callback URL（追加）** | ローカル開発用: `http://localhost:5173/` （base path がある場合は末尾に付与） |
 | **Webhook** | Active を **オフ** |
 | **Permissions** | Repository permissions → **Issues: Read and write** |
 
