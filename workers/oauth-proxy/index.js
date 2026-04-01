@@ -2,8 +2,9 @@ const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 
 // 許可するオリジン（デプロイ先に合わせて変更）
 const ALLOWED_ORIGINS = [
-  // 'https://your-domain.github.io',
+  'https://haruki-kubo.github.io',
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:4173',
 ]
 
@@ -34,17 +35,17 @@ export default {
     }
 
     try {
-      const { code } = await request.json()
-      if (!code) {
+      const { code, client_id } = await request.json()
+      if (!code || !client_id) {
         return Response.json(
-          { error: 'missing_params', error_description: 'code is required' },
+          { error: 'missing_params', error_description: 'code and client_id are required' },
           { status: 400, headers: cors },
         )
       }
 
-      if (!env.GITHUB_CLIENT_SECRET || !env.GITHUB_CLIENT_ID) {
+      if (!env.GITHUB_CLIENT_SECRET) {
         return Response.json(
-          { error: 'server_config', error_description: 'GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET is not configured' },
+          { error: 'server_config', error_description: 'GITHUB_CLIENT_SECRET is not configured' },
           { status: 500, headers: cors },
         )
       }
@@ -57,7 +58,7 @@ export default {
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          client_id: env.GITHUB_CLIENT_ID,
+          client_id,
           client_secret: env.GITHUB_CLIENT_SECRET,
           code,
         }),

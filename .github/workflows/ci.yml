@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - issueboard
   pull_request:
 
 jobs:

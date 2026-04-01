@@ -264,14 +264,15 @@ export async function fetchMilestoneIssues(milestoneNumber) {
 // プロキシ側で client_secret を付与して GitHub に中継する想定
 export async function exchangeOAuthCode(code) {
   const proxyUrl = import.meta.env.VITE_OAUTH_PROXY_URL
-  if (!proxyUrl) {
-    throw new Error('OAuth 設定が不完全です（VITE_OAUTH_PROXY_URL）')
+  const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
+  if (!proxyUrl || !clientId) {
+    throw new Error('OAuth 設定が不完全です（VITE_OAUTH_PROXY_URL / VITE_GITHUB_CLIENT_ID）')
   }
 
   const res = await fetch(proxyUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, client_id: clientId }),
   })
 
   if (!res.ok) {
