@@ -51,6 +51,9 @@ beforeEach(() => {
   vi.stubGlobal('sessionStorage', createStorageMock({ github_token: 'test-token' }))
   vi.stubGlobal('fetch', vi.fn())
   vi.stubEnv('VITE_OAUTH_PROXY_URL', 'https://oauth-proxy.example.com')
+  vi.stubEnv('VITE_GITHUB_CLIENT_ID', 'test-client-id')
+  vi.stubEnv('VITE_REPO_OWNER', 'haruki-kubo')
+  vi.stubEnv('VITE_REPO_NAME', 'todo')
 })
 
 afterEach(() => {
@@ -202,7 +205,7 @@ describe('github api wrapper', () => {
     expect(fetch).toHaveBeenCalledWith('https://oauth-proxy.example.com', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: 'oauth-code' }),
+      body: JSON.stringify({ code: 'oauth-code', client_id: 'test-client-id' }),
     })
   })
 
