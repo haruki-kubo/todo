@@ -1,10 +1,29 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync, existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 
-const tokenCandidates = (process.env.E2E_GITHUB_TOKEN || '')
-  .split(/\s+/)
+function collectTokenCandidates() {
+  const values = []
+  if (process.env.E2E_GITHUB_TOKEN) {
+    values.push(process.env.E2E_GITHUB_TOKEN)
+  }
+
+  const tokenFilePath = resolve(process.cwd(), 'token')
+  if (existsSync(tokenFilePath)) {
+    values.push(readFileSync(tokenFilePath, 'utf8'))
+  }
+
+  return values
+    .join('\n')
+    .split(/\s+/)
+    .filter(Boolean)
+}
+
+const tokenCandidates = collectTokenCandidates()
   .filter((value) => value.startsWith('github_pat_') || value.startsWith('ghp_'))
 const repoOwner = process.env.E2E_REPO_OWNER || 'haruki-kubo'
 const repoName = process.env.E2E_REPO_NAME || 'todo'
+const appBasePath = repoName ? `/${repoName}/` : '/'
 let token = null
 
 const seededIssues = {
@@ -24,7 +43,7 @@ async function loginToApp(page) {
     window.localStorage.setItem('issueboard_lang', 'ja')
   }, token)
 
-  await page.goto('/')
+  await page.goto(appBasePath)
   await expect(page.getByText(`${repoOwner}/${repoName}`)).toBeVisible()
   await expect(page.getByRole('button', { name: '📋 課題' })).toBeVisible()
 }
@@ -61,29 +80,43 @@ async function githubRequest(path, options = {}) {
 
 async function resolveWritableToken() {
   for (const candidate of tokenCandidates) {
-    const userRes = await fetch('https://api.github.com/user', {
-      headers: {
-        Authorization: `Bearer ${candidate}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'codex-playwright-e2e',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    })
+    const headers = {
+      Authorization: `Bearer ${candidate}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'User-Agent': 'codex-playwright-e2e',
+      'X-GitHub-Api-Version': '2022-11-28',
+    }
+
+    const userRes = await fetch('https://api.github.com/user', { headers })
     if (!userRes.ok) continue
 
-    const repoRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}`, {
-      headers: {
-        Authorization: `Bearer ${candidate}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'codex-playwright-e2e',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    })
+    const repoRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}`, { headers })
     if (!repoRes.ok) continue
 
-    const repoData = await repoRes.json()
-    const permissions = repoData.permissions
-    if (permissions?.push || permissions?.admin) {
+    const writeCheckLabel = {
+      name: '__e2e_write_check__',
+      color: '9ca3af',
+      description: 'E2E write check',
+    }
+    const writeCheckRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/labels`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(writeCheckLabel),
+    })
+
+    if (writeCheckRes.status === 201) {
+      await fetch(
+        `https://api.github.com/repos/${repoOwner}/${repoName}/labels/${encodeURIComponent(writeCheckLabel.name)}`,
+        {
+          method: 'DELETE',
+          headers,
+        }
+      ).catch(() => {})
+      return candidate
+    }
+
+    if (writeCheckRes.status === 422) {
       return candidate
     }
   }

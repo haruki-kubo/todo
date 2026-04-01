@@ -4,6 +4,7 @@ import {
   addComment,
   closeIssue,
   createIssue,
+  exchangeOAuthCode,
   fetchComments,
   fetchIssues,
   fetchLabels,
@@ -49,11 +50,13 @@ function createErrorResponse(status, body) {
 beforeEach(() => {
   vi.stubGlobal('sessionStorage', createStorageMock({ github_token: 'test-token' }))
   vi.stubGlobal('fetch', vi.fn())
+  vi.stubEnv('VITE_OAUTH_PROXY_URL', 'https://oauth-proxy.example.com')
 })
 
 afterEach(() => {
   vi.clearAllMocks()
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
 })
 
 describe('github api wrapper', () => {
@@ -183,6 +186,24 @@ describe('github api wrapper', () => {
         }),
       })
     )
+  })
+
+  test('exchangeOAuthCode posts code to the configured proxy', async () => {
+    fetch.mockResolvedValue(
+      createJsonResponse({
+        access_token: 'oauth-token',
+        token_type: 'bearer',
+      })
+    )
+
+    const token = await exchangeOAuthCode('oauth-code')
+
+    expect(token).toBe('oauth-token')
+    expect(fetch).toHaveBeenCalledWith('https://oauth-proxy.example.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: 'oauth-code' }),
+    })
   })
 
   test('throws before making a request when token is missing', async () => {

@@ -2,8 +2,6 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import TokenInput from '../../src/components/TokenInput.jsx'
-
 const githubApiMocks = vi.hoisted(() => ({
   verifyToken: vi.fn(),
 }))
@@ -14,18 +12,32 @@ vi.mock('../../src/api/github.js', () => ({
 
 beforeEach(() => {
   githubApiMocks.verifyToken.mockReset()
+  vi.resetModules()
 })
 
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe('TokenInput', () => {
+  async function renderPatTokenInput(props = {}) {
+    vi.stubEnv('VITE_AUTH_MODE', 'pat')
+    vi.stubEnv('VITE_GITHUB_CLIENT_ID', '')
+    const { I18nProvider } = await import('../../src/i18n')
+    const { default: TokenInput } = await import('../../src/components/TokenInput.jsx')
+    render(
+      <I18nProvider>
+        <TokenInput onTokenSet={() => {}} {...props} />
+      </I18nProvider>
+    )
+  }
+
   test('enables submit only after token is entered', async () => {
     const user = userEvent.setup()
 
-    render(<TokenInput onTokenSet={() => {}} />)
+    await renderPatTokenInput()
 
     const tokenInput = screen.getByLabelText('GitHub Personal Access Token')
     const submit = screen.getByRole('button', { name: '接続する' })
@@ -41,7 +53,7 @@ describe('TokenInput', () => {
     const onTokenSet = vi.fn()
     githubApiMocks.verifyToken.mockResolvedValue({ valid: true, error: null })
 
-    render(<TokenInput onTokenSet={onTokenSet} />)
+    await renderPatTokenInput({ onTokenSet })
 
     await user.type(screen.getByLabelText('GitHub Personal Access Token'), ' ghp_valid ')
     await user.click(screen.getByRole('button', { name: '接続する' }))
@@ -59,7 +71,7 @@ describe('TokenInput', () => {
       error: 'トークンが無効です。権限を確認してください。',
     })
 
-    render(<TokenInput onTokenSet={() => {}} />)
+    await renderPatTokenInput()
 
     await user.type(screen.getByLabelText('GitHub Personal Access Token'), 'ghp_invalid')
     await user.click(screen.getByRole('button', { name: '接続する' }))
@@ -71,7 +83,7 @@ describe('TokenInput', () => {
     const user = userEvent.setup()
     githubApiMocks.verifyToken.mockRejectedValue(new Error('network'))
 
-    render(<TokenInput onTokenSet={() => {}} />)
+    await renderPatTokenInput()
 
     await user.type(screen.getByLabelText('GitHub Personal Access Token'), 'ghp_error')
     await user.click(screen.getByRole('button', { name: '接続する' }))

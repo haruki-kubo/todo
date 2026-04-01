@@ -13,6 +13,7 @@
 | 2026-03-29 | 1.6 | 「背景 — なぜ IssueBoard が必要か」セクションを追加（GitHub Projects の課題と IssueBoard の解決策） |
 | 2026-03-29 | 1.7 | セキュリティ注意事項セクション（PAT 保管・トークン検証・アーキテクチャ制約・更新履歴の表示範囲）を追加 |
 | 2026-03-31 | 1.8 | 多言語対応（日本語・英語）の説明を追加 |
+| 2026-04-01 | 2.0 | OAuth 認証のセットアップ手順を追加（GitHub Apps 作成、Cloudflare Workers プロキシ、環境変数） |
 
 ---
 
@@ -84,15 +85,31 @@ IssueBoard は GitHub Issues をデータソースとして動作します。
 
 **多言語対応**: ヘッダー右側の言語ドロップダウンから日本語・英語を切替可能。選択言語は `localStorage` に保存され、次回アクセス時に復元されます。
 
+### 認証方式
+
+IssueBoard は 2 つの認証方式に対応しています。`.env` の `VITE_AUTH_MODE` で切替可能です。
+
+| 方式 | 概要 | ユーザー側の操作 |
+|------|------|------|
+| **PAT**（デフォルト） | Personal Access Token を入力して接続 | トークン文字列を貼り付け |
+| **OAuth** | 「GitHub でログイン」ボタンで認可 | GitHub 画面で Authorize をクリック |
+
+- `VITE_AUTH_MODE=pat` — PAT のみ
+- `VITE_AUTH_MODE=oauth` — OAuth のみ
+- `VITE_AUTH_MODE=both` — 両方（タブ切替）
+
+OAuth を使用する場合は、後述の **セクション 4.3** のセットアップが必要です。
+
 ### 設定が必要な項目
 
 | # | 項目 | 必須 | 備考 |
 |---|------|------|------|
 | 1 | リポジトリ | ○ | Issue を管理する対象のリポジトリ |
-| 2 | アクセストークン | ○ | アプリから GitHub API にアクセスするための認証情報 |
+| 2 | アクセストークン | ○（PAT 方式の場合） | アプリから GitHub API にアクセスするための認証情報 |
 | 3 | 環境変数 | ○ | アプリにリポジトリ情報を設定 |
-| 4 | ラベル | ○ | 優先度・ステータス・カテゴリの分類用ラベル（**アプリの設定画面からも作成可能**） |
-| 5 | マイルストーン | 任意 | バーンダウンチャート用（**アプリの設定画面からも作成可能**） |
+| 4 | GitHub App + プロキシ | ○（OAuth 方式の場合） | GitHub App の作成と Cloudflare Workers のデプロイ |
+| 5 | ラベル | ○ | 優先度・ステータス・カテゴリの分類用ラベル（**アプリの設定画面からも作成可能**） |
+| 6 | マイルストーン | 任意 | バーンダウンチャート用（**アプリの設定画面からも作成可能**） |
 
 ---
 
@@ -140,7 +157,76 @@ IssueBoard は 1 つの GitHub リポジトリの Issues を管理対象とし�
 
 > **注意**: 組織リポジトリの場合、Fine-grained Token は組織管理者の承認が必要です（ステータスが Pending になります）。承認されるまでトークンは使用できません。
 
-### 4.3 トークンに必要な権限
+### 4.3 OAuth 認証のセットアップ
+
+OAuth 認証を使用する場合は、以下の 3 ステップが必要です。
+
+#### ステップ 1: GitHub App の作成
+
+1. [https://github.com/settings/apps/new](https://github.com/settings/apps/new) を開く
+2. 以下を設定:
+
+| 項目 | 設定値 |
+|------|--------|
+| **GitHub App name** | 任意（例: `IssueBoard`） |
+| **Homepage URL** | デプロイ先 URL（例: `https://haruki-kubo.github.io/todo/`） |
+| **Callback URL** | デプロイ先 URL（例: `https://haruki-kubo.github.io/todo/`） |
+| **Callback URL（追加）** | ローカル開発用: `http://localhost:5173/todo/` |
+| **Webhook** | Active を **オフ** |
+| **Permissions** | Repository permissions → **Issues: Read and write** |
+
+3. **Create GitHub App** をクリック
+4. 作成後の画面で以下をメモ:
+   - **Client ID**（`Iv23li...` 形式）
+   - **Client secrets** → **Generate a new client secret** → 表示された値をコピー（この画面を閉じると再表示不可）
+5. 左メニューの **Install App** → 自分のアカウント → **Only select repositories** → 対象リポジトリを選択 → **Install**
+
+> **注意**: Callback URL はリダイレクト先と完全一致する必要があります（末尾の `/` を含む）。ローカル開発用も「Add callback URL」で追加してください。
+
+#### ステップ 2: Cloudflare Workers プロキシのデプロイ
+
+SPA からは GitHub のトークン交換エンドポイントを直接呼び出せない（CORS 制約）ため、Cloudflare Workers を中継プロキシとして使用します。プロキシのコードは `workers/oauth-proxy/` に配置済みです。
+
+```bash
+# 1. Cloudflare にログイン
+npx wrangler login
+
+# 2. Client Secret を Secret として設定
+cd workers/oauth-proxy
+npx wrangler secret put GITHUB_CLIENT_SECRET
+# プロンプトに GitHub App の Client Secret を貼り付け
+
+# 3. Client ID を Secret として設定
+npx wrangler secret put GITHUB_CLIENT_ID
+# プロンプトに GitHub App の Client ID を貼り付け
+
+# 4. デプロイ
+npx wrangler deploy
+```
+
+デプロイ後に表示される URL（例: `https://issueboard-oauth-proxy.xxx.workers.dev`）をメモしてください。
+
+> **CORS 設定**: `workers/oauth-proxy/index.js` の `ALLOWED_ORIGINS` にデプロイ先と localhost が設定済みです。デプロイ先が異なる場合は変更してください。
+
+#### ステップ 3: 環境変数の設定
+
+`.env` に以下を追加:
+
+```env
+VITE_AUTH_MODE=oauth
+VITE_GITHUB_CLIENT_ID=Iv23lixxxxxxxxxx
+VITE_OAUTH_PROXY_URL=https://issueboard-oauth-proxy.xxx.workers.dev
+```
+
+| 変数名 | 必須 | 説明 |
+|--------|------|------|
+| `VITE_AUTH_MODE` | ○ | `oauth` または `both` に設定 |
+| `VITE_GITHUB_CLIENT_ID` | ○ | GitHub App の Client ID |
+| `VITE_OAUTH_PROXY_URL` | ○ | Cloudflare Workers プロキシの URL |
+
+設定後、dev サーバーを再起動（`.env` の変更は再起動が必要）すると、ログイン画面に「GitHub でログイン」ボタンが表示されます。
+
+### 4.4 トークンに必要な権限
 
 | 操作 | 必要な権限 |
 |------|-----------|
@@ -428,3 +514,7 @@ IssueBoard はサーバーを持たない静的 SPA であり、ブラウザか�
 | Fine-grained Token が使えない | 組織の承認待ち | 組織管理者に承認を依頼するか、Classic Token を使用 |
 | Issue が表示されない | PR が混在 / Issue が Closed | IssueBoard は Open な Issue のみ表示。Pull Request は自動除外 |
 | マイルストーンが表示されない | マイルストーン未作成 | アプリの設定画面またはGitHub の Issues → Milestones から作成 |
+| OAuth: `redirect_uri is not associated` | Callback URL 不一致 | GitHub App の Callback URL にアクセス元 URL（末尾 `/` 含む）を追加 |
+| OAuth: `incorrect_client_credentials` | Client ID/Secret 不一致 | `.env` の `VITE_GITHUB_CLIENT_ID` と Workers の `GITHUB_CLIENT_SECRET` が同じ App のものか確認 |
+| OAuth: 読み取り専用エラー | App 未インストール | GitHub App の「Install App」から対象リポジトリにインストール |
+| OAuth: `Failed to fetch` | Workers の CORS エラー | `workers/oauth-proxy/index.js` の `ALLOWED_ORIGINS` にアクセス元オリジンが含まれているか確認。再デプロイ |

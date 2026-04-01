@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { fetchIssues, fetchAllIssues, fetchLabels, fetchMilestones, fetchCollaborators } from './api/github'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { fetchIssues, fetchAllIssues, fetchLabels, fetchMilestones, fetchCollaborators, exchangeOAuthCode, verifyToken } from './api/github'
 import { classifyLabels } from './utils/labels'
 import { buildHierarchy } from './utils/hierarchy'
 import TokenInput from './components/TokenInput'
@@ -16,8 +16,13 @@ import Dashboard from './components/Dashboard'
 import SettingsView from './components/SettingsView'
 import NewTaskModal from './components/NewTaskModal'
 
+const OAUTH_STATE_KEY = 'github_oauth_state'
+
 function App() {
   const [token, setToken] = useState(sessionStorage.getItem('github_token'))
+  const [oauthProcessing, setOauthProcessing] = useState(false)
+  const [oauthError, setOauthError] = useState(null)
+  const oauthHandled = useRef(false)
   const [issues, setIssues] = useState([])
   const [allIssues, setAllIssues] = useState([])
   const [priorityLabels, setPriorityLabels] = useState([])
@@ -106,6 +111,45 @@ function App() {
     }
   }, [])
 
+  // OAuth callback: URL に ?code= があればトークン交換を実行
+  useEffect(() => {
+    if (oauthHandled.current) return
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    const state = params.get('state')
+    if (!code || token) return
+    oauthHandled.current = true
+
+    // URL からコードパラメータを除去
+    const cleanUrl = window.location.pathname + window.location.hash
+    window.history.replaceState({}, '', cleanUrl)
+
+    setOauthProcessing(true)
+    setOauthError(null)
+    ;(async () => {
+      try {
+        const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY)
+        sessionStorage.removeItem(OAUTH_STATE_KEY)
+        if (!state || !expectedState || state !== expectedState) {
+          throw new Error('OAuth 認証の整合性チェックに失敗しました。もう一度ログインしてください。')
+        }
+
+        const accessToken = await exchangeOAuthCode(code)
+        const result = await verifyToken(accessToken)
+        if (!result.valid) {
+          setOauthError(result.error)
+          return
+        }
+        sessionStorage.setItem('github_token', accessToken)
+        setToken(accessToken)
+      } catch (e) {
+        setOauthError(e.message)
+      } finally {
+        setOauthProcessing(false)
+      }
+    })()
+  }, [token])
+
   useEffect(() => {
     if (token) loadData()
   }, [token, loadData])
@@ -130,7 +174,7 @@ function App() {
   const hierarchy = useMemo(() => buildHierarchy(allIssues), [allIssues])
 
   if (!token) {
-    return <TokenInput onTokenSet={handleTokenSet} />
+    return <TokenInput onTokenSet={handleTokenSet} oauthProcessing={oauthProcessing} oauthError={oauthError} />
   }
 
   const renderContent = () => {

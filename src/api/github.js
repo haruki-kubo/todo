@@ -260,6 +260,35 @@ export async function fetchMilestoneIssues(milestoneNumber) {
   return issues.filter((i) => !i.pull_request)
 }
 
+// OAuth App: 認可コードをアクセストークンに交換
+// プロキシ側で client_secret を付与して GitHub に中継する想定
+export async function exchangeOAuthCode(code) {
+  const proxyUrl = import.meta.env.VITE_OAUTH_PROXY_URL
+  if (!proxyUrl) {
+    throw new Error('OAuth 設定が不完全です（VITE_OAUTH_PROXY_URL）')
+  }
+
+  const res = await fetch(proxyUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`トークン交換に失敗しました (${res.status}): ${body}`)
+  }
+
+  const data = await res.json()
+  if (data.error) {
+    throw new Error(data.error_description || data.error)
+  }
+  if (!data.access_token) {
+    throw new Error('アクセストークンを取得できませんでした')
+  }
+  return data.access_token
+}
+
 // トークンの有効性を確認（ユーザー認証 + 対象リポジトリへのアクセス）
 export async function verifyToken(token) {
   const headers = {

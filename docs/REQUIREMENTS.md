@@ -33,6 +33,7 @@
 | 2026-03-31 | 3.8 | 開始日機能を追加。本文の `📅 開始日: YYYY-MM-DD` で指定可能。ガントのバー開始位置を開始日（未指定時は起票日）に変更。詳細パネル・新規作成に開始日入力を追加 |
 | 2026-03-31 | 3.9 | 詳細パネルの編集項目を即時反映からドラフト編集に変更。`更新する` ボタン押下でステータス・優先度・カテゴリ・担当者・開始日・期限・マイルストーンをまとめて保存 |
 | 2026-03-31 | 4.0 | 多言語対応（日本語・英語）。i18n 基盤を追加。全コンポーネントの文字列を翻訳キーに置換。ヘッダーに言語切替ドロップダウンを追加 |
+| 2026-04-01 | 5.0 | OAuth 認証を追加。GitHub Apps / OAuth Apps の Authorization Code Flow に対応。`VITE_AUTH_MODE` で PAT / OAuth / 両方を切替可能。Cloudflare Workers によるトークン交換プロキシを追加 |
 
 ---
 
@@ -54,6 +55,18 @@ GitHub Issues をデータソースとして、Backlog 風のプロジェクト�
 
 ## 1. 認証
 
+### 1.1 認証方式の切替
+
+`.env` の `VITE_AUTH_MODE` で認証方式を制御する。
+
+| 値 | 動作 | ログイン画面 |
+|------|------|------|
+| `pat` | PAT のみ（デフォルト） | トークン入力フォーム |
+| `oauth` | OAuth のみ | 「GitHub でログイン」ボタン |
+| `both` | PAT + OAuth 両対応 | タブ切替（OAuth がデフォルト） |
+
+### 1.2 PAT 認証
+
 | 項目 | 仕様 |
 |------|------|
 | 認証方式 | GitHub Personal Access Token（PAT） |
@@ -62,6 +75,59 @@ GitHub Issues をデータソースとして、Backlog 風のプロジェクト�
 | 接続先リポジトリ | `.env` の `VITE_REPO_OWNER` / `VITE_REPO_NAME` で指定 |
 | トークン検証 | 3 段階検証（ユーザー認証 → リポジトリアクセス → 書き込み権限）。Read-only トークンはログイン不可 |
 | ログアウト | `sessionStorage` からトークンを削除し、状態をリセット |
+
+### 1.3 OAuth 認証（GitHub Apps / OAuth Apps）
+
+| 項目 | 仕様 |
+|------|------|
+| 認証方式 | OAuth Authorization Code Flow |
+| 対応 App 種別 | GitHub Apps または OAuth Apps |
+| 必要な env | `VITE_GITHUB_CLIENT_ID`（App の Client ID）、`VITE_OAUTH_PROXY_URL`（トークン交換プロキシ URL） |
+| 権限 | GitHub Apps: App 設定の Permissions で管理 / OAuth Apps: `repo` スコープ |
+| トークン保存先 | PAT と同じ `sessionStorage`（キー: `github_token`） |
+| トークン検証 | PAT と同じ 3 段階検証 |
+| CSRF 対策 | `state` パラメータによる照合。`sessionStorage` に保存し、callback 時に検証 |
+
+#### OAuth フローの流れ
+
+```
+┌─────────┐     ①認可リクエスト      ┌──────────┐
+│  SPA    │ ──────────────────────→ │  GitHub  │
+│(Browser)│ ←────────────────────── │          │
+│         │   ②リダイレクト(?code)   └──────────┘
+│         │
+│         │     ③code送信            ┌──────────────────────┐
+│         │ ──────────────────────→ │  Cloudflare Workers  │
+│         │                         │  (OAuth Proxy)       │
+│         │                         │  + client_secret     │
+│         │                         │         │            │
+│         │                         │    ④token交換        │
+│         │                         │    (GitHub API)      │
+│         │   ⑤access_token         │         │            │
+│         │ ←────────────────────── │  ←──────┘            │
+│         │                         └──────────────────────┘
+│         │
+│         │  ⑥3段階検証 → sessionStorage 保存 → アプリ表示
+└─────────┘
+```
+
+1. SPA が `https://github.com/login/oauth/authorize` に `client_id` + `redirect_uri` + `state` 付きでリダイレクト
+2. ユーザーが GitHub 上で認可 → SPA の callback URL に `?code=xxx&state=xxx` でリダイレクト
+3. SPA が `code` をトークン交換プロキシ（Cloudflare Workers）に POST
+4. プロキシが `client_secret` を付与して `https://github.com/login/oauth/access_token` に中継
+5. プロキシが `access_token` を SPA に返却
+6. SPA が PAT と同じ 3 段階検証を実行し、成功すれば `sessionStorage` に保存
+
+#### トークン交換プロキシ（Cloudflare Workers）
+
+| 項目 | 仕様 |
+|------|------|
+| 配置場所 | `workers/oauth-proxy/` |
+| ランタイム | Cloudflare Workers |
+| エンドポイント | `POST /` — リクエスト: `{ code }` → レスポンス: `{ access_token }` |
+| Secret 管理 | `GITHUB_CLIENT_SECRET` / `GITHUB_CLIENT_ID` は Cloudflare の Secret として設定（`wrangler secret put`） |
+| CORS | `ALLOWED_ORIGINS` で許可オリジンを制限（デプロイ先 + localhost） |
+| エラーハンドリング | 全レスポンスに CORS ヘッダー付与。エラー時も JSON で `{ error, error_description }` を返却 |
 
 ---
 
