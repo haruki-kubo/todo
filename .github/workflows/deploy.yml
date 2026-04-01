@@ -30,11 +30,9 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_REPO_OWNER: ${{ vars.VITE_REPO_OWNER }}
-          VITE_REPO_NAME: ${{ vars.VITE_REPO_NAME }}
-          VITE_AUTH_MODE: ${{ vars.VITE_AUTH_MODE }}
-          VITE_GITHUB_CLIENT_ID: ${{ vars.VITE_GITHUB_CLIENT_ID }}
-          VITE_OAUTH_PROXY_URL: ${{ vars.VITE_OAUTH_PROXY_URL }}
+          VITE_REPO_OWNER: monstar-lab-consulting
+          VITE_REPO_NAME: japanpost-okurijyo-inji-pj-doc
+          VITE_AUTH_MODE: pat
 
       - uses: actions/upload-pages-artifact@v3
         with:
