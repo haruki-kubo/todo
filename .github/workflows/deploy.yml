@@ -33,6 +33,7 @@ jobs:
           VITE_REPO_OWNER: monstar-lab-consulting
           VITE_REPO_NAME: japanpost-okurijyo-inji-pj-doc
           VITE_AUTH_MODE: pat
+          VITE_BASE_PATH: /
 
       - uses: actions/upload-pages-artifact@v3
         with:

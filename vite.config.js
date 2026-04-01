@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   const repoName = env.VITE_REPO_NAME || ''
   return {
     plugins: [react(), tailwindcss()],
-    base: repoName ? `/${repoName}/` : '/',
+    base: env.VITE_BASE_PATH || (repoName ? `/${repoName}/` : '/'),
     test: {
       environment: 'jsdom',
       setupFiles: './tests/setup.js',
